@@ -112,7 +112,35 @@ class="<?php echo strpos($_SERVER['REQUEST_URI'],'/teachers/') || strpos($_SERVE
 </a>
 
 </li>
+<li>
 
+<a
+href="../period_templates/index.php"
+class="<?php if(strpos($_SERVER['REQUEST_URI'],'period_templates') || strpos($_SERVER['REQUEST_URI'],'periods')) echo 'active'; ?>">
+
+<i class="fa-solid fa-clock"></i>
+
+<span>Schedules</span>
+
+</a>
+
+</li>
+<li>
+
+<a
+href="../timetables/index.php"
+
+class="<?php if(strpos($_SERVER['REQUEST_URI'],'timetables') ) echo 'active'; ?>">
+
+<i class="fa-solid fa-calendar-days"></i>
+
+<span>
+Timetables
+</span>
+
+</a>
+
+</li>
 <li>
 
 <a

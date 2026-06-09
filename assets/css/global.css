@@ -128,6 +128,20 @@ height:7px;
 background:#cbd5e1;
 border-radius:20px;
 }
+body.dark-mode{
+
+--bg:#020617;
+
+--card:#0f172a;
+
+--text:#f8fafc;
+
+--muted:#94a3b8;
+
+--shadow:
+0 10px 25px rgba(0,0,0,.45);
+
+}
 
 /* BREAKPOINTS */
 
