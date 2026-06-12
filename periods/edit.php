@@ -165,7 +165,7 @@ WHERE period_id='$id'"
 );
 
 header(
-"Location:view.php?id=$id&success=updated"
+"Location:../period_templates/view.php?id=".$template_id."&success=period_updated"
 );
 
 exit();
@@ -229,7 +229,7 @@ Update academic period information.
 </div>
 
 <a
-href="../period_templates/view.php?id=<?php echo $template_id; ?>"
+href="../period_templates/view.php?id=<?php echo $row['template_id']; ?>"
 class="btn">
 
 <i class="fa-solid fa-arrow-left"></i>
@@ -409,7 +409,9 @@ Activity
 
 </select>
 
-</div><div class="form-grid">
+</div>
+
+<div class="form-group">
 
 <div class="form-group">
 
@@ -498,7 +500,7 @@ gap:12px;
 type="color"
 name="display_color"
 id="display_color"
-value="#3b82f6"
+value="<?php echo htmlspecialchars($row['display_color']); ?>"
 style="
 width:60px;
 height:45px;
@@ -511,7 +513,7 @@ cursor:pointer;
 <input
 type="text"
 id="color_value"
-value="#3b82f6"
+value="<?php echo htmlspecialchars($row['display_color']); ?>"
 readonly
 class="form-input">
 
@@ -616,7 +618,7 @@ Update Period
 </button>
 
 <a
-href="view.php?id=<?php echo $id; ?>"
+href="../period_templates/view.php?id=<?php echo $row['template_id']; ?>"
 class="btn">
 
 Cancel
@@ -636,42 +638,31 @@ Cancel
 </div>
 
 <script src="../assets/js/common.js"></script>
-<div class="form-group">
+<script>
 
-<label class="form-label">
-Display Color
-</label>
+const colorPicker =
+document.getElementById('display_color');
 
-<div
-style="
-display:flex;
-align-items:center;
-gap:12px;
-">
+const colorValue =
+document.getElementById('color_value');
 
-<input
-type="color"
-name="display_color"
-id="display_color"
-value="#3b82f6"
-style="
-width:60px;
-height:45px;
-padding:0;
-border:none;
-background:none;
-cursor:pointer;
-">
+if(colorPicker && colorValue){
 
-<input
-type="text"
-id="color_value"
-value="#3b82f6"
-readonly
-class="form-input">
+colorPicker.addEventListener(
 
-</div>
+'input',
 
-</div>
+function(){
+
+colorValue.value =
+this.value;
+
+}
+
+);
+
+}
+
+</script>
 </body>
 </html>

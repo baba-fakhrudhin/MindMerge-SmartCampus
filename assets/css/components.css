@@ -1,7 +1,7 @@
 .dashboard-grid{
 display:grid;
 grid-template-columns:
-repeat(auto-fit,minmax(220px,1fr));
+repeat(auto-fit,minmax(260px,1fr));
 gap:10px;
 }
 
@@ -199,22 +199,59 @@ background:#ef4444;
 /* QUICK ACTIONS */
 
 .quick-actions{
+
 display:grid;
+
 grid-template-columns:
-repeat(auto-fit,minmax(200px,1fr));
-gap:18px;
+repeat(auto-fit,minmax(250px,1fr));
+
+gap:20px;
+
+align-items:stretch;
+
 }
 .action-card{
+
 background:var(--card);
-padding:22px;
+
+padding:24px;
+
 border-radius:18px;
+
 text-align:center;
-transition:0.3s;
-cursor:pointer;
-border:none;
-width:100%;
-overflow:hidden;
-box-shadow:var(--shadow);
+
+display:flex;
+
+flex-direction:column;
+
+justify-content:center;
+
+min-height:180px;
+
+width:auto;
+
+height:100%;
+
+}
+.form-grid{
+
+display:grid;
+
+grid-template-columns:
+repeat(auto-fit,minmax(250px,1fr));
+
+gap:18px;
+
+}
+.action-card h3,
+.action-card p{
+text-decoration:none;
+color:inherit;
+}
+
+.action-card:hover h3,
+.action-card:hover p{
+text-decoration:none;
 }
 
 
@@ -232,6 +269,23 @@ color:var(--primary);
 margin-bottom:8px;
 }
 
+.action-card,
+.action-card:visited,
+.action-card:hover,
+.action-card:focus{
+
+text-decoration:none !important;
+
+color:inherit;
+
+}
+
+.action-card h3,
+.action-card p{
+
+text-decoration:none !important;
+
+}
 /* SCHOOL OVERVIEW */
 
 .school-overview{
@@ -438,6 +492,96 @@ background:#111c35;
 border:1px solid #29476d;
 
 }
+
+
+.data-table{
+width:100%;
+border-collapse:collapse;
+}
+
+.data-table th{
+padding:14px;
+text-align:left;
+font-weight:600;
+}
+
+.data-table td{
+padding:14px;
+border-top:1px solid rgba(148,163,184,.15);
+}
+
+body.dark-mode .custom-table{
+
+background:#111c35;
+
+}
+
+body.dark-mode .custom-table th{
+
+background:#182642;
+
+color:#fff;
+
+}
+
+body.dark-mode .custom-table td{
+
+border-color:#29476d;
+
+}
+
+body.dark-mode .dashboard-section{
+
+border-color:#29476d;
+
+}
+
+body.dark-mode .action-card{
+
+background:#111c35;
+
+border:1px solid #29476d;
+
+}
+
+body.dark-mode .form-input,
+body.dark-mode .form-select,
+body.dark-mode .form-textarea{
+
+background:#182642;
+color:#fff;
+border-color:#29476d;
+
+}
+.quick-actions{
+
+display:grid;
+
+grid-template-columns:
+repeat(
+auto-fit,
+minmax(
+220px,
+1fr
+)
+);
+
+gap:16px;
+
+}
+
+.quick-actions .action-card{
+
+width:100%;
+
+margin:0;
+
+}
+.dashboard-section + .dashboard-grid{
+margin-top:24px;
+}
+
+
 
 /* RESPONSIVE */
 

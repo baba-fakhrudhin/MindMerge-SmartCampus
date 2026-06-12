@@ -13,10 +13,7 @@ $section_id = intval($_POST['section_id']);
 
 $template_id = intval($_POST['template_id']);
 
-$timetable_type = mysqli_real_escape_string(
-$conn,
-$_POST['timetable_type']
-);
+
 
 $academic_year = mysqli_real_escape_string(
 $conn,
@@ -54,7 +51,7 @@ section_id='$section_id'
 
 AND
 
-timetable_type='$timetable_type'"
+template_id='$template_id'"
 
 );
 
@@ -87,7 +84,6 @@ section_id,
 template_id,
 academic_year,
 status,
-timetable_type,
 effective_from,
 effective_to
 
@@ -100,7 +96,6 @@ VALUES(
 '$template_id',
 '$academic_year',
 '$status',
-'$timetable_type',
 $effective_from_sql,
 $effective_to_sql
 
@@ -133,6 +128,7 @@ WHERE status='active'
 ORDER BY class_name ASC"
 
 );
+$sections = [];
 
 $section_query = mysqli_query(
 
@@ -140,21 +136,23 @@ $conn,
 
 "SELECT
 
-s.*,
-c.class_name
+section_id,
+class_id,
+section_name
 
-FROM sections s
+FROM sections
 
-JOIN classes c
-ON s.class_id=c.class_id
+WHERE status='active'
 
-WHERE s.status='active'
-
-ORDER BY
-c.class_name,
-s.section_name"
+ORDER BY section_name ASC"
 
 );
+
+while($section = mysqli_fetch_assoc($section_query)){
+
+$sections[] = $section;
+
+}
 
 $template_query = mysqli_query(
 
@@ -217,7 +215,7 @@ Create Timetable
 </h1>
 
 <p>
-Create regular, exam, special, remedial or holiday timetables.
+Create and manage class schedules using predefined schedule templates.
 </p>
 
 </div>
@@ -265,6 +263,7 @@ Class
 
 <select
 name="class_id"
+id="class_id"
 class="form-select"
 required>
 
@@ -309,12 +308,16 @@ Section
 
 <select
 name="section_id"
+id="section_id"
 class="form-select"
-required>
+required
+disabled>
 
 <option value="">
-Select Section
+Select Class First
 </option>
+
+</select>
 
 <?php
 
@@ -408,41 +411,6 @@ $template['template_name']
 }
 
 ?>
-
-</select>
-
-</div>
-
-<div class="form-group">
-
-<label class="form-label">
-Timetable Type
-</label>
-
-<select
-name="timetable_type"
-class="form-select"
-required>
-
-<option value="regular">
-Regular
-</option>
-
-<option value="exam">
-Exam
-</option>
-
-<option value="special">
-Special
-</option>
-
-<option value="remedial">
-Remedial
-</option>
-
-<option value="holiday">
-Holiday
-</option>
 
 </select>
 
@@ -561,7 +529,68 @@ Cancel
 </div>
 
 <script src="../assets/js/common.js"></script>
+<script>
 
+const sections = <?php echo json_encode($sections); ?>;
+
+const classSelect =
+document.getElementById('class_id');
+
+const sectionSelect =
+document.getElementById('section_id');
+
+classSelect.addEventListener(
+
+'change',
+
+function(){
+
+const classId = this.value;
+
+sectionSelect.innerHTML = '';
+
+if(classId === ''){
+
+sectionSelect.disabled = true;
+
+sectionSelect.innerHTML =
+
+'<option value="">Select Class First</option>';
+
+return;
+
+}
+
+sectionSelect.disabled = false;
+
+sectionSelect.innerHTML =
+
+'<option value="">Select Section</option>';
+
+sections.forEach(function(section){
+
+if(section.class_id == classId){
+
+const option =
+document.createElement('option');
+
+option.value =
+section.section_id;
+
+option.textContent =
+section.section_name;
+
+sectionSelect.appendChild(option);
+
+}
+
+});
+
+}
+
+);
+
+</script>
 </body>
 
 </html>

@@ -1,14 +1,18 @@
+
 <?php
+
+require_once __DIR__ . '/../config/constants.php';
 
 $current_page = basename($_SERVER['PHP_SELF']);
 
 ?>
 
+
 <div class="sidebar" id="sidebar">
 
 <div class="sidebar-logo">
 
-<a href="../dashboard/index.php" class="logo-box" style="text-decoration:none;color:white;">
+<a href="<?php echo BASE_URL; ?>dashboard/index.php" class="logo-box" style="text-decoration:none;color:white;">
 
 <i class="fa-solid fa-graduation-cap"></i>
 
@@ -29,7 +33,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
 <li>
 
 <a
-href="../profile/index.php"
+href="<?php echo BASE_URL; ?>profile/index.php"
 class="<?php if($current_page == 'index.php' && strpos($_SERVER['REQUEST_URI'],'profile')) echo 'active'; ?>"
 >
 
@@ -44,7 +48,7 @@ class="<?php if($current_page == 'index.php' && strpos($_SERVER['REQUEST_URI'],'
 <li>
 
 <a
-href="../dashboard/index.php"
+href="<?php echo BASE_URL; ?>dashboard/index.php"
 class="<?php if($current_page == 'index.php' && strpos($_SERVER['REQUEST_URI'],'dashboard')) echo 'active'; ?>"
 >
 
@@ -59,7 +63,7 @@ class="<?php if($current_page == 'index.php' && strpos($_SERVER['REQUEST_URI'],'
 <li>
 
 <a
-href="../classes/index.php"
+href="<?php echo BASE_URL; ?>classes/index.php"
 class="<?php echo strpos($_SERVER['REQUEST_URI'],'/classes/') !== false ? 'active' : ''; ?>">
 
 <i class="fa-solid fa-school"></i>
@@ -72,7 +76,7 @@ class="<?php echo strpos($_SERVER['REQUEST_URI'],'/classes/') !== false ? 'activ
 <li>
 
 <a
-href="../sections/index.php"
+href="<?php echo BASE_URL; ?>sections/index.php"
 class="<?php echo strpos($_SERVER['REQUEST_URI'],'/sections/') !== false ? 'active' : ''; ?>">
 
 <i class="fa-solid fa-layer-group"></i>
@@ -86,7 +90,7 @@ class="<?php echo strpos($_SERVER['REQUEST_URI'],'/sections/') !== false ? 'acti
 
 
 <a
-href="../students/index.php"
+href="<?php echo BASE_URL; ?>students/index.php"
 class="<?php echo strpos($_SERVER['REQUEST_URI'],'/students/') !== false ? 'active' : ''; ?>"
 >
 
@@ -101,7 +105,7 @@ class="<?php echo strpos($_SERVER['REQUEST_URI'],'/students/') !== false ? 'acti
 <li>
 
 <a
-href="../teachers/index.php"
+href="<?php echo BASE_URL; ?>teachers/index.php"
 class="<?php echo strpos($_SERVER['REQUEST_URI'],'/teachers/') || strpos($_SERVER['REQUEST_URI'],'/subjects/') || strpos($_SERVER['REQUEST_URI'],'/teacher_assignments/') !== false ? 'active' : ''; ?>"
 >
 
@@ -115,7 +119,7 @@ class="<?php echo strpos($_SERVER['REQUEST_URI'],'/teachers/') || strpos($_SERVE
 <li>
 
 <a
-href="../period_templates/index.php"
+href="<?php echo BASE_URL; ?>period_templates/index.php"
 class="<?php if(strpos($_SERVER['REQUEST_URI'],'period_templates') || strpos($_SERVER['REQUEST_URI'],'periods')) echo 'active'; ?>">
 
 <i class="fa-solid fa-clock"></i>
@@ -128,7 +132,7 @@ class="<?php if(strpos($_SERVER['REQUEST_URI'],'period_templates') || strpos($_S
 <li>
 
 <a
-href="../timetables/index.php"
+href="<?php echo BASE_URL; ?>timetables/index.php"
 
 class="<?php if(strpos($_SERVER['REQUEST_URI'],'timetables') ) echo 'active'; ?>">
 
@@ -144,7 +148,7 @@ Timetables
 <li>
 
 <a
-href="../attendance/index.php"
+href="<?php echo BASE_URL; ?>attendance/index.php"
 class="<?php echo strpos($_SERVER['REQUEST_URI'],'/attendance/') !== false ? 'active' : ''; ?>"
 >
 
@@ -159,7 +163,7 @@ class="<?php echo strpos($_SERVER['REQUEST_URI'],'/attendance/') !== false ? 'ac
 <li>
 
 <a
-href="../exams/index.php"
+href="<?php echo BASE_URL; ?>exams/index.php"
 class="<?php echo strpos($_SERVER['REQUEST_URI'],'/exams/') !== false ? 'active' : ''; ?>"
 >
 

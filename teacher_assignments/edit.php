@@ -82,7 +82,11 @@ $sections = mysqli_query(
 
 $conn,
 
-"SELECT *
+"SELECT
+
+section_id,
+class_id,
+section_name
 
 FROM sections
 
@@ -431,6 +435,7 @@ Class
 
 <select
 name="class_id"
+id="class_id"
 class="form-select"
 required>
 
@@ -469,40 +474,17 @@ echo 'selected';
 <label class="form-label">
 Section
 </label>
-
 <select
 name="section_id"
+id="section_id"
 class="form-select"
 required>
 
-<?php
-
-while($section = mysqli_fetch_assoc($sections)){
-
-?>
-
-<option
-
-value="<?php echo $section['section_id']; ?>"
-
-<?php
-
-if($row['section_id'] == $section['section_id']){
-
-echo 'selected';
-
-}
-
-?>>
-
-<?php echo $section['section_name']; ?>
-
+<option value="">
+Select Section
 </option>
 
-<?php } ?>
-
 </select>
-
 </div>
 
 </div>
@@ -536,7 +518,15 @@ Cancel
 </div>
 
 </form>
+<input
+type="hidden"
+id="current_class_id"
+value="<?php echo $row['class_id']; ?>">
 
+<input
+type="hidden"
+id="current_section_id"
+value="<?php echo $row['section_id']; ?>">
 </div>
 
 </div>
@@ -546,6 +536,91 @@ Cancel
 </div>
 
 <script src="../assets/js/common.js"></script>
+<script>
 
+const sections = [
+
+<?php
+
+mysqli_data_seek(
+$sections,
+0
+);
+
+while($section = mysqli_fetch_assoc($sections)){
+
+?>
+
+{
+id:'<?php echo $section['section_id']; ?>',
+class_id:'<?php echo $section['class_id']; ?>',
+name:'<?php echo htmlspecialchars($section['section_name'],ENT_QUOTES); ?>'
+},
+
+<?php
+
+}
+
+?>
+
+];
+
+const classSelect =
+document.getElementById('class_id');
+
+const sectionSelect =
+document.getElementById('section_id');
+
+const currentClass =
+document.getElementById('current_class_id').value;
+
+const currentSection =
+document.getElementById('current_section_id').value;
+
+function loadSections(classId, selectedSection=''){
+
+sectionSelect.innerHTML =
+'<option value="">Select Section</option>';
+
+sections.forEach(function(section){
+
+if(section.class_id === classId){
+
+const option =
+document.createElement('option');
+
+option.value = section.id;
+
+option.textContent = section.name;
+
+if(section.id === selectedSection){
+
+option.selected = true;
+
+}
+
+sectionSelect.appendChild(option);
+
+}
+
+});
+
+}
+
+loadSections(
+currentClass,
+currentSection
+);
+
+classSelect.addEventListener(
+'change',
+function(){
+
+loadSections(this.value);
+
+}
+);
+
+</script>
 </body>
 </html>

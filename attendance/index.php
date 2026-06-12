@@ -1,650 +1,983 @@
-<?php
+    <?php
 
-include('../config/auth.php');
-include('../config/db.php');
+    include('../config/auth.php');
+    include('../config/db.php');
 
-$today = date('Y-m-d');
+    $total_sessions = mysqli_fetch_assoc(
 
-$total_classes = mysqli_fetch_assoc(
+    mysqli_query(
+
+    $conn,
+
+    "SELECT COUNT(*) total
+    FROM attendance"
+
+    )
+
+    )['total'];
+
+    $today_sessions = mysqli_fetch_assoc(
+
+    mysqli_query(
+
+    $conn,
+
+    "SELECT COUNT(*) total
+    FROM attendance
+    WHERE attendance_date = CURDATE()"
+
+    )
+
+    )['total'];
+
+    $this_month_sessions = mysqli_fetch_assoc(
+
+    mysqli_query(
+
+    $conn,
+
+    "SELECT COUNT(*) total
+
+    FROM attendance
+
+    WHERE
+
+    MONTH(attendance_date)=MONTH(CURDATE())
+
+    AND
+
+    YEAR(attendance_date)=YEAR(CURDATE())"
+
+    )
+
+    )['total'];
+
+    $total_students = mysqli_fetch_assoc(
+
+    mysqli_query(
+
+    $conn,
+
+    "SELECT COUNT(*) total
+    FROM students"
+
+    )
+
+    )['total'];
+
+    $students_covered = mysqli_fetch_assoc(
+
+    mysqli_query(
+
+    $conn,
+
+    "SELECT COUNT(DISTINCT student_id) total
+    FROM attendance_records"
+
+    )
+
+    )['total'];
+
+    $recent_attendance = mysqli_query(
+
+    $conn,
+
+    "SELECT
+
+    a.*,
+
+    c.class_name,
+
+    s.section_name,
+
+    p.period_name,
+
+    sub.subject_name
+
+    FROM attendance a
+
+    LEFT JOIN classes c
+    ON a.class_id = c.class_id
+
+    LEFT JOIN sections s
+    ON a.section_id = s.section_id
+
+    LEFT JOIN periods p
+    ON a.period_id = p.period_id
+
+    LEFT JOIN subjects sub
+    ON a.subject_id = sub.subject_id
+
+    ORDER BY
+
+    a.attendance_date DESC,
+    a.attendance_id DESC
+
+    LIMIT 20"
+
+    );
+    $attendance_counts = [];
+
+    $count_query = mysqli_query(
+
+    $conn,
+
+    "SELECT
+
+    attendance_id,
+
+    COUNT(*) total
+
+    FROM attendance_records
+
+    GROUP BY attendance_id"
+
+    );
+
+    while(
+
+    $count_row =
+    mysqli_fetch_assoc(
+    $count_query
+    )
+
+    ){
+
+    $attendance_counts[
+    $count_row['attendance_id']
+    ] = $count_row['total'];
+
+    }
+
+ $overall_present = mysqli_fetch_assoc(
 
 mysqli_query(
 
 $conn,
 
 "SELECT COUNT(*) total
-FROM classes
-WHERE status='active'"
+
+FROM attendance_records
+
+WHERE status != 'absent'"
 
 )
 
 )['total'];
 
-$total_students = mysqli_fetch_assoc(
+$overall_total = mysqli_fetch_assoc(
 
 mysqli_query(
 
 $conn,
 
 "SELECT COUNT(*) total
-FROM students"
+
+FROM attendance_records"
 
 )
 
 )['total'];
 
-$today_attendance = 0;
+$overall_attendance_rate = 0;
 
-if(mysqli_query(
-$conn,
-"SHOW TABLES LIKE 'attendance'"
-)->num_rows > 0){
+if($overall_total > 0){
 
-$today_attendance = mysqli_fetch_assoc(
+$overall_attendance_rate = round(
 
-mysqli_query(
+($overall_present / $overall_total) * 100,
 
-$conn,
+2
 
-"SELECT COUNT(*) total
-FROM attendance
-WHERE attendance_date='$today'"
-
-)
-
-)['total'];
-
-}
-
-$attendance_percentage = 0;
-
-if($total_classes > 0){
-
-$attendance_percentage =
-round(
-($today_attendance / $total_classes) * 100
 );
 
-if($attendance_percentage > 100){
-
-$attendance_percentage = 100;
-
 }
 
-}
+    $today_total = mysqli_fetch_assoc(
 
-?>
-<!DOCTYPE html>
-<html lang="en">
+        mysqli_query(
 
-<head>
+            $conn,
 
-<meta charset="UTF-8">
+            "SELECT COUNT(*) total
 
-<meta
-name="viewport"
-content="width=device-width, initial-scale=1.0">
+            FROM attendance_records ar
 
-<title>
-Attendance Management | MindMerge SmartCampus
-</title>
+            JOIN attendance a
+            ON ar.attendance_id=a.attendance_id
 
-<link rel="stylesheet" href="../assets/css/global.css">
-<link rel="stylesheet" href="../assets/css/layout.css">
-<link rel="stylesheet" href="../assets/css/components.css">
+            WHERE
 
-<link rel="stylesheet"
-href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+            a.attendance_date=CURDATE()"
 
-<style>
+        )
 
-.attendance-banner{
+    )['total'];
 
-background:linear-gradient(
-135deg,
-#2563eb,
-#1d4ed8
-);
+    $today_attendance_rate = 0;
 
-padding:28px;
+    if($today_total > 0){
 
-border-radius:18px;
+        $today_attendance_rate = round(
 
-color:white;
+            ($today_present / $today_total) * 100,
 
-margin-bottom:24px;
+            2
 
-}
+        );
 
-.attendance-banner p{
+    }
+    $classes_covered = mysqli_fetch_assoc(
 
-color:#dbeafe;
+        mysqli_query(
 
-margin-top:8px;
+            $conn,
 
-}
+            "SELECT
 
-.quick-grid{
+            COUNT(DISTINCT class_id) total
 
-display:grid;
+            FROM attendance"
 
-grid-template-columns:
-repeat(auto-fit,minmax(240px,1fr));
+        )
 
-gap:20px;
+    )['total'];
 
-}
+    ?>
 
-.quick-card{
+    <!DOCTYPE html>
+    <html lang="en">
 
-background:var(--card);
+    <head>
 
-border-radius:18px;
+    <meta charset="UTF-8">
 
-padding:24px;
+    <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0">
 
-box-shadow:var(--shadow);
+    <title>
+    Attendance Management | MindMerge SmartCampus
+    </title>
 
-border:1px solid rgba(148,163,184,.15);
 
-transition:.3s;
+    <link rel="stylesheet" href="../assets/css/global.css">
+    <link rel="stylesheet" href="../assets/css/layout.css">
+    <link rel="stylesheet" href="../assets/css/components.css">
 
-text-decoration:none;
+    <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        .attendance-stats-grid{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:16px;
+    }
+    .attendance-table-wrapper{
+    width:100%;
+    overflow-x:auto;
+    }
 
-color:inherit;
+    .attendance-table-wrapper .data-table{
+    width:100%;
+    min-width:1100px;
+    table-layout:auto;
+    }
 
-}
+    @media(max-width:992px){
+    .attendance-stats-grid{
+    grid-template-columns:repeat(2,1fr);
+    }
+    }
 
-.quick-card:hover{
+    @media(max-width:576px){
+    .attendance-stats-grid{
+    grid-template-columns:1fr;
+    }
+    }
+    </style>
+    </head>
 
-transform:translateY(-4px);
+    <body>
 
-}
+    <div class="app-layout">
 
-.quick-card i{
+    <?php include('../partials/sidebar.php'); ?>
 
-font-size:28px;
+    <div class="main-content">
 
-margin-bottom:14px;
+    <?php include('../partials/topbar.php'); ?>
 
-color:var(--primary);
+    <div class="page-content">
 
-}
+    <div class="page-header">
 
-.quick-card h3{
+    <div>
 
-margin-bottom:8px;
+    <h1>
+    Attendance Management
+    </h1>
 
-}
+    <p>
+    Manage student attendance, teacher attendance and attendance analytics.
+    </p>
+    </div>
 
-.recent-box{
+    <a
+    href="mark.php"
+    class="btn btn-primary">
 
-padding:18px;
+    <i class="fa-solid fa-clipboard-check"></i>
 
-border-radius:14px;
+    Mark Attendance
 
-background:var(--card);
+    </a>
 
-border:1px solid rgba(148,163,184,.15);
+    </div>
 
-}
+    <?php if(isset($_GET['success'])){ ?>
 
-body.dark-mode .quick-card,
-body.dark-mode .recent-box{
+    <div
+    style="
+    background:#dcfce7;
+    color:#166534;
+    padding:14px 18px;
+    border-radius:14px;
+    margin-bottom:20px;
+    font-weight:500;
+    ">
 
-background:#111c35;
-border-color:#29476d;
+    <?php
 
-}
+    if($_GET['success']=='marked'){
 
-</style>
+    echo "Attendance marked successfully.";
 
-</head>
+    }
+    elseif($_GET['success']=='updated'){
 
-<body>
+    echo "Attendance updated successfully.";
 
-<div class="app-layout">
+    }
+    elseif($_GET['success']=='deleted'){
 
-<?php include('../partials/sidebar.php'); ?>
+    echo "Attendance deleted successfully.";
 
-<div class="main-content">
+    }
 
-<?php include('../partials/topbar.php'); ?>
+    ?>
 
-<div class="page-content">
+    </div>
 
-<div class="attendance-banner">
+    <?php } ?>
+    <?php if(isset($_GET['error'])){ ?>
 
-<h1>
-Attendance Management
-</h1>
+    <div
+    style="
+    background:#fee2e2;
+    color:#991b1b;
+    padding:14px 18px;
+    border-radius:14px;
+    margin-bottom:20px;
+    font-weight:500;
+    ">
 
-<p>
-Manage daily student attendance, reports and attendance history.
-</p>
+    <?php
 
-</div>
+    if($_GET['error']=='delete_failed'){
 
-<div class="dashboard-grid">
+        echo "Unable to delete attendance session.";
 
-<div class="dashboard-card stat-card">
+    }
+    elseif($_GET['error']=='invalid_attendance'){
 
-<div class="stat-top">
+        echo "Invalid attendance session selected.";
 
-<div class="card-icon">
+    }
 
-<i class="fa-solid fa-calendar-check"></i>
+    ?>
 
-</div>
+    </div>
 
-<h3>
+    <?php } ?>
 
-<?php echo $today_attendance; ?>
+    <div class="dashboard-grid attendance-stats-grid">
 
-</h3>
+    <div class="dashboard-card stat-card">
 
-</div>
+    <div class="stat-top">
 
-<p>
-Classes Marked Today
-</p>
+    <div class="card-icon">
 
-</div>
+    <i class="fa-solid fa-calendar-check"></i>
 
-<div class="dashboard-card stat-card">
+    </div>
 
-<div class="stat-top">
+    <h3>
 
-<div class="card-icon">
+    <?php echo $total_sessions; ?>
 
-<i class="fa-solid fa-user-graduate"></i>
+    </h3>
 
-</div>
+    </div>
 
-<h3>
+    <p>
+    Student Sessions
+    </p>
 
-<?php echo $total_students; ?>
+    </div>
 
-</h3>
+    <div class="dashboard-card stat-card">
 
-</div>
+    <div class="stat-top">
 
-<p>
-Total Students
-</p>
+    <div class="card-icon">
 
-</div>
+    <i class="fa-solid fa-calendar-day"></i>
 
-<div class="dashboard-card stat-card">
+    </div>
 
-<div class="stat-top">
+    <h3>
 
-<div class="card-icon">
+    <?php echo $today_sessions; ?>
 
-<i class="fa-solid fa-school"></i>
+    </h3>
 
-</div>
+    </div>
+    <p>
+    Today's Sessions
+    </p>
 
-<h3>
+    </div>
 
-<?php echo $total_classes; ?>
+    <div class="dashboard-card stat-card">
 
-</h3>
+    <div class="stat-top">
 
-</div>
+    <div class="card-icon">
 
-<p>
-Active Classes
-</p>
+    <i class="fa-solid fa-calendar-week"></i>
 
-</div>
+    </div>
 
-<div class="dashboard-card stat-card">
+    <h3>
 
-<div class="stat-top">
+    <?php echo $this_month_sessions; ?>
 
-<div class="card-icon">
+    </h3>
 
-<i class="fa-solid fa-chart-line"></i>
+    </div>
 
-</div>
+    <p>
+    Monthly Sessions
+    </p>
 
-<h3>
+    </div>
 
-<?php echo $attendance_percentage; ?>%
+    <div class="dashboard-card stat-card">
 
-</h3>
+    <div class="stat-top">
 
-</div>
+    <div class="card-icon">
 
-<p>
-Today's Completion
-</p>
+    <i class="fa-solid fa-user-graduate"></i>
 
-</div>
+    </div>
 
-</div>
-<?php
+    <h3>
 
-include('../config/auth.php');
-include('../config/db.php');
+    <?php echo $students_covered; ?>
 
-$today = date('Y-m-d');
+    </h3>
 
-$total_classes = mysqli_fetch_assoc(
+    </div>
 
-mysqli_query(
+    <p>
+    Students Marked
+    </p>
 
-$conn,
+    </div>
 
-"SELECT COUNT(*) total
-FROM classes
-WHERE status='active'"
+    <div class="dashboard-card stat-card">
 
-)
+    <div class="stat-top">
 
-)['total'];
+    <div class="card-icon">
 
-$total_students = mysqli_fetch_assoc(
+    <i class="fa-solid fa-percent"></i>
 
-mysqli_query(
+    </div>
 
-$conn,
+    <h3>
 
-"SELECT COUNT(*) total
-FROM students"
+    <?php echo $overall_attendance_rate; ?>%
 
-)
+    </h3>
 
-)['total'];
+    </div>
 
-$today_attendance = 0;
+    <p>
+    Overall Attendance
+    </p>
 
-if(mysqli_query(
-$conn,
-"SHOW TABLES LIKE 'attendance'"
-)->num_rows > 0){
+    </div>
+    <div class="dashboard-card stat-card">
 
-$today_attendance = mysqli_fetch_assoc(
+    <div class="stat-top">
 
-mysqli_query(
+    <div class="card-icon">
 
-$conn,
+    <i class="fa-solid fa-school"></i>
 
-"SELECT COUNT(*) total
-FROM attendance
-WHERE attendance_date='$today'"
+    </div>
 
-)
+    <h3>
 
-)['total'];
+    <?php echo $classes_covered; ?>
 
-}
+    </h3>
 
-$attendance_percentage = 0;
+    </div>
 
-if($total_classes > 0){
+    <p>
+    Classes Covered
+    </p>
 
-$attendance_percentage =
-round(
-($today_attendance / $total_classes) * 100
-);
+    </div>
 
-if($attendance_percentage > 100){
+    </div>
 
-$attendance_percentage = 100;
+    <?php if($total_students == 0){ ?>
 
-}
+    <div
+    style="
+    background:#fee2e2;
+    color:#991b1b;
+    padding:14px 18px;
+    border-radius:14px;
+    margin-top:20px;
+    margin-bottom:20px;
+    font-weight:500;
+    ">
 
-}
+    No students found. Add students before marking attendance.
 
-?>
-<!DOCTYPE html>
-<html lang="en">
+    </div>
 
-<head>
+    <?php } ?>
 
-<meta charset="UTF-8">
 
-<meta
-name="viewport"
-content="width=device-width, initial-scale=1.0">
 
-<title>
-Attendance Management | MindMerge SmartCampus
-</title>
+    <div class="dashboard-section">
 
-<link rel="stylesheet" href="../assets/css/global.css">
-<link rel="stylesheet" href="../assets/css/layout.css">
-<link rel="stylesheet" href="../assets/css/components.css">
+        <div class="section-header">
 
-<link rel="stylesheet"
-href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+            <h2>
+                Quick Actions
+            </h2>
 
-<style>
+        </div>
 
-.attendance-banner{
+        <div class="quick-actions">
 
-background:linear-gradient(
-135deg,
-#2563eb,
-#1d4ed8
-);
+            <a
+                href="mark.php"
+                class="action-card"
+            >
 
-padding:28px;
+                <i class="fa-solid fa-clipboard-check"></i>
 
-border-radius:18px;
+                <h3>
+                    Student Attendance
+                </h3>
 
-color:white;
+                <p>
+                    Record attendance for students.
+                </p>
 
-margin-bottom:24px;
+            </a>
+            <a
+    href="teacher/index.php"
+    class="action-card"
+    >
 
-}
+    <i class="fa-solid fa-chalkboard-user"></i>
 
-.attendance-banner p{
+    <h3>
+    Teacher Attendance
+    </h3>
 
-color:#dbeafe;
+    <p>
+    Manage faculty attendance records.
+    </p>
 
-margin-top:8px;
+    </a>
+            <a
+                href="report.php"
+                class="action-card"
+            >
 
-}
+                <i class="fa-solid fa-chart-column"></i>
 
-.quick-grid{
+                <h3>
+                    Reports
+                </h3>
 
-display:grid;
+                <p>
+                    Attendance analytics and summaries.
+                </p>
 
-grid-template-columns:
-repeat(auto-fit,minmax(240px,1fr));
+            </a>
 
-gap:20px;
+            <a
+                href="report.php?date_from=<?php echo date('Y-m-d'); ?>&date_to=<?php echo date('Y-m-d'); ?>"
+                class="action-card"
+            >
 
-}
+                <i class="fa-solid fa-calendar-day"></i>
 
-.quick-card{
+                <h3>
+                    Today's Attendance
+                </h3>
 
-background:var(--card);
+                <p>
+                    Attendance marked today.
+                </p>
 
-border-radius:18px;
+            </a>
 
-padding:24px;
+        </div>
 
-box-shadow:var(--shadow);
+    </div>
 
-border:1px solid rgba(148,163,184,.15);
+    <div
+    class="dashboard-section"
+    id="recentAttendance"
+    >
 
-transition:.3s;
+    <div class="section-header">
 
-text-decoration:none;
+    <h2>
+    Attendance Activity Log
+    </h2>
 
-color:inherit;
+    </div>
 
-}
+    <div
+    class="table-responsive attendance-table-wrapper"
+    >
 
-.quick-card:hover{
+    <table class="data-table sortable-table custom-table">
 
-transform:translateY(-4px);
+    <thead>
 
-}
+    <tr>
 
-.quick-card i{
+    <th data-sort="true">
+    Date
+    <i class="fa-solid fa-sort"></i>
+    </th>
 
-font-size:28px;
+    <th data-sort="true">
+    Class
+    <i class="fa-solid fa-sort"></i>
+    </th>
 
-margin-bottom:14px;
+    <th data-sort="true">
+    Section
+    <i class="fa-solid fa-sort"></i>
+    </th>
 
-color:var(--primary);
+    <th data-sort="true">
+    Period
+    <i class="fa-solid fa-sort"></i>
+    </th>
 
-}
+    <th data-sort="true">
+    Subject
+    <i class="fa-solid fa-sort"></i>
+    </th>
 
-.quick-card h3{
+    <th data-sort="true">
+    Day
+    <i class="fa-solid fa-sort"></i>
+    </th>
 
-margin-bottom:8px;
+    <th data-sort="true">
+    Students
+    <i class="fa-solid fa-sort"></i>
+    </th>
 
-}
+    <th>
+    Actions
+    </th>
 
-.recent-box{
+    </tr>
 
-padding:18px;
+    </thead>
 
-border-radius:14px;
+    <tbody>
 
-background:var(--card);
+    <?php
 
-border:1px solid rgba(148,163,184,.15);
+    if(mysqli_num_rows($recent_attendance) > 0){
 
-}
+    while($row = mysqli_fetch_assoc($recent_attendance)){
+    $student_count =
 
-body.dark-mode .quick-card,
-body.dark-mode .recent-box{
+    $attendance_counts[
+    $row['attendance_id']
+    ]
 
-background:#111c35;
-border-color:#29476d;
+    ??
 
-}
+    0;
 
-</style>
+    ?>
 
-</head>
+    <tr>
+    <td
+    data-value="<?php echo strtotime($row['attendance_date']); ?>"
+    >
 
-<body>
+    <?php
+    echo date(
+    'd M Y',
+    strtotime(
+    $row['attendance_date']
+    )
+    );
+    ?>
 
-<div class="app-layout">
+    </td>
+    <td>
 
-<?php include('../partials/sidebar.php'); ?>
+    <?php
 
-<div class="main-content">
+    echo htmlspecialchars(
+    $row['class_name']
+    );
 
-<?php include('../partials/topbar.php'); ?>
+    ?>
 
-<div class="page-content">
+    </td>
 
-<div class="attendance-banner">
+    <td>
 
-<h1>
-Attendance Management
-</h1>
+    <?php
 
-<p>
-Manage daily student attendance, reports and attendance history.
-</p>
+    echo htmlspecialchars(
+    $row['section_name']
+    );
 
-</div>
+    ?>
 
-<div class="dashboard-grid">
+    </td>
 
-<div class="dashboard-card stat-card">
+    <td>
 
-<div class="stat-top">
+    <?php
 
-<div class="card-icon">
+    echo htmlspecialchars(
+    $row['period_name']
+    );
 
-<i class="fa-solid fa-calendar-check"></i>
+    ?>
 
-</div>
+    </td>
 
-<h3>
+    <td>
 
-<?php echo $today_attendance; ?>
+    <?php
 
-</h3>
+    echo htmlspecialchars(
+    $row['subject_name']
+    );
 
-</div>
+    ?>
 
-<p>
-Classes Marked Today
-</p>
+    </td>
 
-</div>
+    <td>
 
-<div class="dashboard-card stat-card">
+    <?php
 
-<div class="stat-top">
+    echo htmlspecialchars(
+    ucfirst($row['attendance_day'])
+    );
 
-<div class="card-icon">
+    ?>
 
-<i class="fa-solid fa-user-graduate"></i>
+    </td>
 
-</div>
+    <td
+    data-value="<?php echo $student_count; ?>"
+    >
 
-<h3>
+    <?php echo $student_count; ?>
 
-<?php echo $total_students; ?>
+    </td>
 
-</h3>
+    <td>
 
-</div>
+    <div
+    style="
+    display:flex;
+    gap:6px;
+    flex-wrap:nowrap;
+    white-space:nowrap;
+    ">
 
-<p>
-Total Students
-</p>
+    <a
+    href="view.php?attendance_id=<?php echo $row['attendance_id']; ?>"
+    class="btn btn-primary">
 
-</div>
+    <i class="fa-solid fa-eye"></i>
 
-<div class="dashboard-card stat-card">
+    View
 
-<div class="stat-top">
+    </a>
 
-<div class="card-icon">
+    <a
+    href="edit.php?attendance_id=<?php echo $row['attendance_id']; ?>"
+    class="btn">
 
-<i class="fa-solid fa-school"></i>
+    <i class="fa-solid fa-pen"></i>
 
-</div>
+    Edit
 
-<h3>
+    </a>
 
-<?php echo $total_classes; ?>
+    <a
+    href="delete.php?attendance_id=<?php echo $row['attendance_id']; ?>"
+    class="btn"
+    style="
+    background:#ef4444;
+    color:white;
+    "
+    onclick="return confirm('Delete this attendance session?');">
 
-</h3>
+    <i class="fa-solid fa-trash"></i>
 
-</div>
+    Delete
 
-<p>
-Active Classes
-</p>
+    </a>
 
-</div>
+    </div>
 
-<div class="dashboard-card stat-card">
+    </td>
 
-<div class="stat-top">
+    </tr>
 
-<div class="card-icon">
+    <?php
 
-<i class="fa-solid fa-chart-line"></i>
+    }
 
-</div>
+    }
+    else{
 
-<h3>
+    ?>
+    <tr>
 
-<?php echo $attendance_percentage; ?>%
+    <td
+    colspan="8"
+    style="
+    text-align:center;
+    padding:60px 20px;
+    ">
 
-</h3>
+    <div>
 
-</div>
+    <i
+    class="fa-solid fa-clipboard-check"
+    style="
+    font-size:48px;
+    color:var(--muted);
+    margin-bottom:16px;
+    "></i>
 
-<p>
-Today's Completion
-</p>
+    <h3>
+    No Attendance Sessions Found
+    </h3>
 
-</div>
+    <p
+    style="
+    margin-top:10px;
+    margin-bottom:20px;
+    color:var(--muted);
+    ">
 
-</div>
+    No attendance sessions have been created yet.
+
+    </p>
+
+    <a
+    href="mark.php"
+    class="btn btn-primary">
+
+    <i class="fa-solid fa-plus"></i>
+
+    Mark First Attendance
+
+    </a>
+
+    </div>
+
+    </td>
+
+    </tr>
+
+    <?php
+
+    }
+
+    ?>
+
+    </tbody>
+
+    </table>
+
+    </div>
+
+    </div>
+    </div>
+
+    </div>
+
+    </div>
+
+    <script src="../assets/js/common.js"></script>
+    <script>
+
+    document.querySelectorAll(
+    'a[href^="#"]'
+    ).forEach(anchor=>{
+
+    anchor.addEventListener(
+    'click',
+    function(e){
+
+    e.preventDefault();
+
+    const target=document.querySelector(
+    this.getAttribute('href')
+    );
+
+    if(target){
+
+    target.scrollIntoView({
+    behavior:'smooth',
+    block:'start'
+    });
+
+    }
+
+    });
+
+    });
+
+    </script>
+    </body>
+
+    </html>

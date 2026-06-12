@@ -1,4 +1,3 @@
-
 <?php
 
 include('../config/auth.php');
@@ -17,7 +16,7 @@ $check = mysqli_query(
 
 $conn,
 
-"SELECT *
+"SELECT timetable_id
 
 FROM timetables
 
@@ -32,9 +31,9 @@ exit();
 
 }
 
-/*
-Delete timetable entries first
-*/
+mysqli_begin_transaction($conn);
+
+try{
 
 mysqli_query(
 
@@ -48,10 +47,6 @@ WHERE timetable_id='$id'"
 
 );
 
-/*
-Delete timetable
-*/
-
 mysqli_query(
 
 $conn,
@@ -64,10 +59,23 @@ WHERE timetable_id='$id'"
 
 );
 
+mysqli_commit($conn);
+
 header(
 "Location:index.php?success=deleted"
 );
 
 exit();
 
-?>
+}
+catch(Exception $e){
+
+mysqli_rollback($conn);
+
+header(
+"Location:index.php?error=delete_failed"
+);
+
+exit();
+
+}

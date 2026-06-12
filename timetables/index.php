@@ -30,8 +30,11 @@ pt.template_name LIKE '%$search%'
 
 OR
 
+pt.template_type LIKE '%$search%'
+
+OR
+
 t.academic_year LIKE '%$search%'
-OR t.timetable_type LIKE '%$search%'
 
 ";
 
@@ -51,7 +54,9 @@ s.section_name,
 
 pt.template_name,
 
-pt.template_code
+pt.template_code,
+
+pt.template_type
 
 FROM timetables t
 
@@ -125,6 +130,7 @@ FROM timetables"
 )
 
 )['total'];
+
 $regular_count = mysqli_fetch_assoc(
 
 mysqli_query(
@@ -133,9 +139,12 @@ $conn,
 
 "SELECT COUNT(*) total
 
-FROM timetables
+FROM timetables t
 
-WHERE timetable_type='regular'"
+JOIN period_templates pt
+ON t.template_id=pt.template_id
+
+WHERE pt.template_type='regular'"
 
 )
 
@@ -149,9 +158,12 @@ $conn,
 
 "SELECT COUNT(*) total
 
-FROM timetables
+FROM timetables t
 
-WHERE timetable_type='exam'"
+JOIN period_templates pt
+ON t.template_id=pt.template_id
+
+WHERE pt.template_type='exam'"
 
 )
 
@@ -301,7 +313,11 @@ Create Timetable
 </div>
 
 </div>
-<?php if(isset($_GET['success'])){ ?>
+<?php
+
+if(isset($_GET['success'])){
+
+?>
 
 <div
 style="
@@ -316,20 +332,60 @@ font-weight:500;
 <?php
 
 if($_GET['success']=='created'){
+
 echo "Timetable created successfully.";
+
 }
 elseif($_GET['success']=='updated'){
+
 echo "Timetable updated successfully.";
+
 }
 elseif($_GET['success']=='deleted'){
+
 echo "Timetable deleted successfully.";
+
 }
 
 ?>
 
 </div>
 
-<?php } ?>
+<?php
+
+}
+
+elseif(isset($_GET['error'])){
+
+?>
+
+<div
+style="
+background:#fee2e2;
+color:#991b1b;
+padding:14px 18px;
+border-radius:14px;
+margin-bottom:20px;
+font-weight:500;
+">
+
+<?php
+
+if($_GET['error']=='delete_failed'){
+
+echo "Unable to delete timetable.";
+
+}
+
+?>
+
+</div>
+
+<?php
+
+}
+
+?>
 <div class="dashboard-grid">
 
 <div class="dashboard-card stat-card">
@@ -337,15 +393,11 @@ echo "Timetable deleted successfully.";
 <div class="stat-top">
 
 <div class="card-icon">
-
 <i class="fa-solid fa-calendar-days"></i>
-
 </div>
 
 <h3>
-
 <?php echo $total_timetables; ?>
-
 </h3>
 
 </div>
@@ -361,15 +413,11 @@ Total Timetables
 <div class="stat-top">
 
 <div class="card-icon">
-
 <i class="fa-solid fa-circle-check"></i>
-
 </div>
 
 <h3>
-
 <?php echo $active_timetables; ?>
-
 </h3>
 
 </div>
@@ -385,15 +433,11 @@ Active Timetables
 <div class="stat-top">
 
 <div class="card-icon">
-
 <i class="fa-solid fa-school"></i>
-
 </div>
 
 <h3>
-
 <?php echo $total_classes; ?>
-
 </h3>
 
 </div>
@@ -409,15 +453,11 @@ Classes Covered
 <div class="stat-top">
 
 <div class="card-icon">
-
 <i class="fa-solid fa-layer-group"></i>
-
 </div>
 
 <h3>
-
 <?php echo $total_templates; ?>
-
 </h3>
 
 </div>
@@ -427,49 +467,43 @@ Schedules Used
 </p>
 
 </div>
+
 <div class="dashboard-card stat-card">
 
 <div class="stat-top">
 
 <div class="card-icon">
-
 <i class="fa-solid fa-calendar-week"></i>
-
 </div>
 
 <h3>
-
 <?php echo $regular_count; ?>
-
 </h3>
 
 </div>
 
 <p>
-Regular Timetables
+Regular Schedules
 </p>
 
 </div>
+
 <div class="dashboard-card stat-card">
 
 <div class="stat-top">
 
 <div class="card-icon">
-
 <i class="fa-solid fa-file-signature"></i>
-
 </div>
 
 <h3>
-
 <?php echo $exam_count; ?>
-
 </h3>
 
 </div>
 
 <p>
-Exam Timetables
+Exam Schedules
 </p>
 
 </div>
@@ -537,8 +571,8 @@ Available Timetables
 </h2>
 
 </div>
-
-<?php
+<!-- this -->
+ <?php
 
 if(mysqli_num_rows($query) > 0){
 
@@ -569,13 +603,26 @@ gap:12px;
 ">
 
 <div>
+
 <h3>
 
-<?php echo htmlspecialchars($row['class_name']); ?>
+<?php
+
+echo htmlspecialchars(
+$row['class_name']
+);
+
+?>
 
 -
 
-<?php echo htmlspecialchars($row['section_name']); ?>
+<?php
+
+echo htmlspecialchars(
+$row['section_name']
+);
+
+?>
 
 </h3>
 
@@ -586,10 +633,12 @@ gap:12px;
 <?php
 
 echo ucfirst(
-$row['timetable_type']
+$row['template_type']
 );
 
 ?>
+
+Schedule
 
 </span>
 
@@ -612,12 +661,19 @@ style="
 margin-top:4px;
 ">
 
+Academic Year:
+
+<strong>
+
 <?php
 
 echo htmlspecialchars(
 $row['academic_year']
 );
+
 ?>
+
+</strong>
 
 </p>
 
@@ -640,40 +696,85 @@ $row['status']
 
 <div
 style="
-margin-top:10px;
+margin-top:14px;
+padding-top:14px;
+border-top:1px solid rgba(148,163,184,.15);
 font-size:13px;
 color:var(--muted);
+line-height:1.8;
 ">
 
+<div>
+
+<strong>
+Schedule:
+</strong>
+
+<?php
+
+echo htmlspecialchars(
+$row['template_code']
+);
+
+?>
+
+-
+
+<?php
+
+echo htmlspecialchars(
+$row['template_name']
+);
+
+?>
+
+</div>
+
+<div>
+
+<strong>
 Valid From:
+</strong>
 
 <?php
 
 echo !empty($row['effective_from'])
+
 ? date(
 'd M Y',
 strtotime(
-$row['effective_from'])
+$row['effective_from']
 )
+)
+
 : 'Immediate';
 
 ?>
 
-<br>
+</div>
 
+<div>
+
+<strong>
 Valid To:
+</strong>
 
 <?php
 
 echo !empty($row['effective_to'])
+
 ? date(
 'd M Y',
 strtotime(
-$row['effective_to'])
+$row['effective_to']
 )
+)
+
 : 'Until Changed';
 
 ?>
+
+</div>
 
 </div>
 
@@ -695,7 +796,7 @@ color:white;
 
 <i class="fa-solid fa-table"></i>
 
-Open Timetable
+View
 
 </a>
 
@@ -705,7 +806,7 @@ class="btn btn-primary">
 
 <i class="fa-solid fa-pen-to-square"></i>
 
-Manage Entries
+Entries
 
 </a>
 
@@ -745,7 +846,6 @@ Delete
 ?>
 
 </div>
-
 <?php
 
 }
@@ -756,8 +856,16 @@ else{
 <div
 style="
 text-align:center;
-padding:50px 20px;
+padding:60px 20px;
 ">
+
+<i
+class="fa-solid fa-calendar-xmark"
+style="
+font-size:60px;
+color:#94a3b8;
+margin-bottom:20px;
+"></i>
 
 <h3>
 
@@ -768,10 +876,11 @@ No Timetables Found
 <p
 style="
 margin-top:10px;
-margin-bottom:20px;
+margin-bottom:24px;
+color:var(--muted);
 ">
 
-Create your first timetable to begin scheduling classes.
+No timetable records match your search criteria.
 
 </p>
 

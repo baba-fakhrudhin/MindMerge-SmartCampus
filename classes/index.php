@@ -166,6 +166,31 @@ echo "Class deleted successfully.";
 </div>
 
 <?php } ?>
+<?php if(isset($_GET['error'])){ ?>
+
+<div
+style="
+background:#fee2e2;
+color:#991b1b;
+padding:14px 18px;
+border-radius:14px;
+margin-bottom:20px;
+font-weight:500;
+">
+
+<?php
+
+if($_GET['error']=='in_use'){
+
+echo "Cannot delete class because students, timetable records or attendance records are linked to it.";
+
+}
+
+?>
+
+</div>
+
+<?php } ?>
 
 <!-- SEARCH -->
 

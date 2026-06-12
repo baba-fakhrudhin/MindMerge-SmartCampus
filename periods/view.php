@@ -107,7 +107,7 @@ Edit
 </a>
 
 <a
-href="../period_templates/view.php?id=<?php echo $template_id; ?>"
+href="../period_templates/view.php?id=<?php echo $row['template_id']; ?>"
 class="btn">
 
 <i class="fa-solid fa-arrow-left"></i>

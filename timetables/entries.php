@@ -17,7 +17,8 @@ c.class_name,
 s.section_name,
 
 pt.template_name,
-pt.template_code
+pt.template_code,
+pt.template_type
 
 FROM timetables t
 
@@ -63,6 +64,7 @@ $_POST['subject_id']
 $teacher_assignment_id = intval(
 $_POST['teacher_assignment_id']
 );
+
 $room_no = mysqli_real_escape_string(
 $conn,
 trim($_POST['room_no'])
@@ -85,9 +87,13 @@ WHERE
 
 timetable_id='$timetable_id'
 
-AND day_of_week='$day_of_week'
+AND
 
-AND period_id='$period_id'
+day_of_week='$day_of_week'
+
+AND
+
+period_id='$period_id'
 
 LIMIT 1"
 
@@ -97,10 +103,6 @@ if(mysqli_num_rows($existing_query) > 0){
 
 $existing = mysqli_fetch_assoc(
 $existing_query
-);
-$remarks = mysqli_real_escape_string(
-$conn,
-trim($_POST['remarks'])
 );
 
 mysqli_query(
@@ -122,6 +124,7 @@ remarks='$remarks'
 WHERE entry_id='".$existing['entry_id']."'"
 
 );
+
 }
 else{
 
@@ -198,28 +201,6 @@ $periods[] = $period;
 
 }
 
-$subjects_query = mysqli_query(
-
-$conn,
-
-"SELECT *
-
-FROM subjects
-
-WHERE status='active'
-
-ORDER BY subject_name ASC"
-
-);
-
-$subjects = [];
-
-while($row = mysqli_fetch_assoc($subjects_query)){
-
-$subjects[] = $row;
-
-}
-
 $teacher_query = mysqli_query(
 
 $conn,
@@ -227,6 +208,8 @@ $conn,
 "SELECT
 
 ta.assignment_id,
+
+ta.subject_id,
 
 u.full_name,
 
@@ -251,18 +234,83 @@ AND
 
 ta.section_id='".$timetable['section_id']."'
 
-ORDER BY u.full_name ASC"
+ORDER BY
+
+sub.subject_name ASC,
+u.full_name ASC"
 
 );
 
 $teachers = [];
 
+$subjects = [];
+
 while($row = mysqli_fetch_assoc($teacher_query)){
 
 $teachers[] = $row;
 
+$subjects[$row['subject_id']] = [
+
+'subject_id'   => $row['subject_id'],
+'subject_name' => $row['subject_name']
+
+];
+
 }
 
+$subjects = array_values($subjects);
+
+$total_slots = 0;
+
+foreach($periods as $period){
+
+if($period['is_teaching_period'] == 'yes'){
+
+$total_slots += count($days);
+
+}
+
+}
+
+$assigned_slots = mysqli_fetch_assoc(
+
+mysqli_query(
+
+$conn,
+
+"SELECT COUNT(*) total
+
+FROM timetable_entries
+
+WHERE timetable_id='$timetable_id'"
+
+)
+
+)['total'];
+
+$unassigned_slots =
+max(
+0,
+$total_slots - $assigned_slots
+);
+
+$completion = 0;
+
+if($total_slots > 0){
+
+$completion = round(
+
+($assigned_slots / $total_slots) * 100
+
+);
+
+if($completion > 100){
+
+$completion = 100;
+
+}
+
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -276,7 +324,7 @@ name="viewport"
 content="width=device-width, initial-scale=1.0">
 
 <title>
-Timetable Entry Manager
+Timetable Entry Manager | MindMerge SmartCampus
 </title>
 
 <link rel="stylesheet" href="../assets/css/global.css">
@@ -310,8 +358,8 @@ vertical-align:top;
 .editor-table th{
 
 background:#f8fafc;
-
 text-align:center;
+font-weight:600;
 
 }
 
@@ -324,9 +372,7 @@ background:#081028;
 .period-cell{
 
 background:#f8fafc;
-
 font-weight:600;
-
 min-width:180px;
 
 }
@@ -340,11 +386,8 @@ background:#081028;
 .entry-card{
 
 padding:10px;
-
 border-radius:12px;
-
 background:#eff6ff;
-
 border:1px solid #bfdbfe;
 
 }
@@ -352,8 +395,25 @@ border:1px solid #bfdbfe;
 body.dark-mode .entry-card{
 
 background:#0f172a;
-
 border-color:#29476d;
+
+}
+
+.non-teaching{
+
+padding:24px;
+text-align:center;
+font-weight:700;
+border-radius:12px;
+background:#f3f4f6;
+color:#6b7280;
+
+}
+
+body.dark-mode .non-teaching{
+
+background:#111827;
+color:#9ca3af;
 
 }
 
@@ -379,17 +439,57 @@ border-color:#29476d;
 
 <h1>
 
-<?php echo htmlspecialchars($timetable['class_name']); ?>
+<?php
+
+echo htmlspecialchars(
+$timetable['class_name']
+);
+
+?>
 
 -
 
-<?php echo htmlspecialchars($timetable['section_name']); ?>
+<?php
+
+echo htmlspecialchars(
+$timetable['section_name']
+);
+
+?>
 
 </h1>
 
 <p>
 
-Timetable Entry Manager
+<?php
+
+echo htmlspecialchars(
+$timetable['template_code']
+);
+
+?>
+
+-
+
+<?php
+
+echo htmlspecialchars(
+$timetable['template_name']
+);
+
+?>
+
+|
+
+<?php
+
+echo ucfirst(
+$timetable['template_type']
+);
+
+?>
+
+Schedule
 
 </p>
 
@@ -416,6 +516,8 @@ View Timetable
 href="index.php"
 class="btn">
 
+<i class="fa-solid fa-arrow-left"></i>
+
 Back
 
 </a>
@@ -423,11 +525,8 @@ Back
 </div>
 
 </div>
-<?php
 
-if(isset($_GET['success'])){
-
-?>
+<?php if(isset($_GET['success'])){ ?>
 
 <div
 style="
@@ -439,15 +538,103 @@ margin-bottom:20px;
 font-weight:500;
 ">
 
-Entry saved successfully.
+Timetable entry saved successfully.
 
 </div>
 
-<?php
+<?php } ?>
 
-}
+<div class="dashboard-grid">
 
-?>
+<div class="dashboard-card stat-card">
+
+<div class="stat-top">
+
+<div class="card-icon">
+<i class="fa-solid fa-table-cells"></i>
+</div>
+
+<h3>
+
+<?php echo $total_slots; ?>
+
+</h3>
+
+</div>
+
+<p>
+Teaching Slots
+</p>
+
+</div>
+
+<div class="dashboard-card stat-card">
+
+<div class="stat-top">
+
+<div class="card-icon">
+<i class="fa-solid fa-circle-check"></i>
+</div>
+
+<h3>
+
+<?php echo $assigned_slots; ?>
+
+</h3>
+
+</div>
+
+<p>
+Assigned Slots
+</p>
+
+</div>
+
+<div class="dashboard-card stat-card">
+
+<div class="stat-top">
+
+<div class="card-icon">
+<i class="fa-solid fa-clock"></i>
+</div>
+
+<h3>
+
+<?php echo $unassigned_slots; ?>
+
+</h3>
+
+</div>
+
+<p>
+Pending Slots
+</p>
+
+</div>
+
+<div class="dashboard-card stat-card">
+
+<div class="stat-top">
+
+<div class="card-icon">
+<i class="fa-solid fa-chart-pie"></i>
+</div>
+
+<h3>
+
+<?php echo $completion; ?>%
+
+</h3>
+
+</div>
+
+<p>
+Completion
+</p>
+
+</div>
+
+</div>
 
 <div class="dashboard-section">
 
@@ -458,7 +645,7 @@ Weekly Timetable Editor
 </h2>
 
 <p>
-Assign subjects, teachers and rooms directly into timetable slots.
+Assign subjects, faculty members and rooms for every teaching period.
 </p>
 
 </div>
@@ -532,8 +719,8 @@ $period['period_name']
 <div
 style="
 font-size:12px;
-color:#6b7280;
 margin-top:6px;
+color:#6b7280;
 ">
 
 <?php
@@ -582,7 +769,6 @@ $period['period_type']
 </div>
 
 </td>
-
 <?php
 
 foreach($days as $day){
@@ -635,19 +821,11 @@ $entry_query
 
 <?php
 
-if(
-$period['is_teaching_period']=='no'
-){
+if($period['is_teaching_period'] == 'no'){
 
 ?>
 
-<div
-style="
-text-align:center;
-padding:20px;
-color:#6b7280;
-font-weight:600;
-">
+<div class="non-teaching">
 
 <?php
 
@@ -694,7 +872,7 @@ $entry['subject_name']
 style="
 font-size:12px;
 color:#6b7280;
-margin-bottom:6px;
+margin-bottom:8px;
 ">
 
 <?php
@@ -716,13 +894,19 @@ if(!empty($entry['room_no'])){
 <div
 style="
 font-size:12px;
+font-weight:600;
 color:#2563eb;
-margin-bottom:10px;
+margin-bottom:8px;
 ">
 
 Room:
 <?php echo htmlspecialchars($entry['room_no']); ?>
+
+</div>
+
 <?php
+
+}
 
 if(!empty($entry['remarks'])){
 
@@ -732,7 +916,7 @@ if(!empty($entry['remarks'])){
 style="
 font-size:12px;
 color:var(--muted);
-margin-top:6px;
+margin-bottom:10px;
 ">
 
 <?php
@@ -749,17 +933,10 @@ $entry['remarks']
 
 }
 
-?>
-
-</div>
-
-<?php
-
-}
-
 }
 
 ?>
+
 <form method="POST">
 
 <input
@@ -772,14 +949,11 @@ type="hidden"
 name="period_id"
 value="<?php echo $period['period_id']; ?>">
 
-<div
-style="
-margin-top:10px;
-">
+<div style="margin-top:10px;">
 
 <select
 name="subject_id"
-class="form-select"
+class="form-select subject-select"
 required>
 
 <option value="">
@@ -832,10 +1006,7 @@ $subject['subject_name']
 
 </div>
 
-<div
-style="
-margin-top:10px;
-">
+<div style="margin-top:10px;">
 
 <select
 name="teacher_assignment_id"
@@ -856,12 +1027,16 @@ foreach($teachers as $teacher){
 
 value="<?php echo $teacher['assignment_id']; ?>"
 
+data-subject="<?php echo $teacher['subject_id']; ?>"
+
 <?php
 
 if(
 $entry
 &&
-$entry['teacher_assignment_id'] == $teacher['assignment_id']
+$entry['teacher_assignment_id']
+==
+$teacher['assignment_id']
 ){
 
 echo 'selected';
@@ -880,7 +1055,7 @@ $teacher['full_name']
 
 ?>
 
- -
+-
 
 <?php
 
@@ -902,10 +1077,13 @@ $teacher['subject_name']
 
 </div>
 
-<div
-style="
-margin-top:10px;
-">
+<?php
+
+if($period['room_required'] == 'yes'){
+
+?>
+
+<div style="margin-top:10px;">
 
 <input
 
@@ -915,7 +1093,7 @@ name="room_no"
 
 class="form-input"
 
-placeholder="Room No"
+placeholder="Room / Lab"
 
 value="<?php
 
@@ -928,10 +1106,16 @@ $entry['room_no']
 }
 
 ?>">
-<div
-style="
-margin-top:10px;
-">
+
+</div>
+
+<?php
+
+}
+
+?>
+
+<div style="margin-top:10px;">
 
 <textarea
 
@@ -939,13 +1123,9 @@ name="remarks"
 
 class="form-textarea"
 
-placeholder="Remarks"
+rows="2"
 
-style="
-min-height:70px;
-">
-
-<?php
+placeholder="Remarks (Optional)"><?php
 
 if($entry){
 
@@ -955,25 +1135,17 @@ $entry['remarks']
 
 }
 
-?>
-
-</textarea>
+?></textarea>
 
 </div>
-</div>
 
-<div
-style="
-margin-top:10px;
-">
+<div style="margin-top:10px;">
 
 <button
 type="submit"
 name="save_entry"
 class="btn btn-primary"
-style="
-width:100%;
-">
+style="width:100%;">
 
 <i class="fa-solid fa-floppy-disk"></i>
 
@@ -1055,9 +1227,7 @@ Subject Assignment
 </h3>
 
 <p>
-
-Select the subject that should be taught during the selected period.
-
+Only subjects assigned to this class and section are displayed.
 </p>
 
 </div>
@@ -1069,9 +1239,7 @@ Teacher Assignment
 </h3>
 
 <p>
-
-Choose a teacher assignment belonging to this class and section.
-
+Teachers are loaded from teacher assignments linked to this class and section.
 </p>
 
 </div>
@@ -1083,9 +1251,7 @@ Room Allocation
 </h3>
 
 <p>
-
-Optional room number or lab name for this period.
-
+Room field appears only when the selected period requires a room.
 </p>
 
 </div>

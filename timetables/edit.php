@@ -2,7 +2,6 @@
 
 include('../config/auth.php');
 include('../config/db.php');
-
 $id = intval($_GET['id'] ?? 0);
 
 $timetable_query = mysqli_query(
@@ -15,7 +14,13 @@ t.*,
 
 c.class_name,
 
-s.section_name
+s.section_name,
+
+pt.template_name,
+
+pt.template_code,
+
+pt.template_type
 
 FROM timetables t
 
@@ -24,6 +29,9 @@ ON t.class_id=c.class_id
 
 JOIN sections s
 ON t.section_id=s.section_id
+
+JOIN period_templates pt
+ON t.template_id=pt.template_id
 
 WHERE t.timetable_id='$id'"
 
@@ -53,16 +61,13 @@ $conn,
 trim($_POST['academic_year'])
 );
 
-$timetable_type = mysqli_real_escape_string(
-$conn,
-$_POST['timetable_type']
-);
-
-$effective_from = !empty($_POST['effective_from'])
+$effective_from =
+!empty($_POST['effective_from'])
 ? $_POST['effective_from']
 : NULL;
 
-$effective_to = !empty($_POST['effective_to'])
+$effective_to =
+!empty($_POST['effective_to'])
 ? $_POST['effective_to']
 : NULL;
 
@@ -70,6 +75,28 @@ $status = mysqli_real_escape_string(
 $conn,
 $_POST['status']
 );
+
+if(
+
+!empty($effective_from)
+
+&&
+
+!empty($effective_to)
+
+&&
+
+strtotime($effective_from)
+>
+strtotime($effective_to)
+
+){
+
+$error =
+'Effective To date must be greater than Effective From date.';
+
+}
+else{
 
 $duplicate_check = mysqli_query(
 
@@ -89,7 +116,7 @@ section_id='".$row['section_id']."'
 
 AND
 
-timetable_type='$timetable_type'
+template_id='$template_id'
 
 AND
 
@@ -100,7 +127,7 @@ timetable_id!='$id'"
 if(mysqli_num_rows($duplicate_check) > 0){
 
 $error =
-'A timetable of this type already exists for this class and section.';
+'A timetable using this template already exists for this class and section.';
 
 }
 else{
@@ -129,8 +156,6 @@ academic_year='$academic_year',
 
 status='$status',
 
-timetable_type='$timetable_type',
-
 effective_from=$effective_from_sql,
 
 effective_to=$effective_to_sql
@@ -140,10 +165,12 @@ WHERE timetable_id='$id'"
 );
 
 header(
-"Location:view.php?id=".$id
+"Location:view.php?id=".$id."&success=updated"
 );
 
 exit();
+
+}
 
 }
 
@@ -164,7 +191,6 @@ ORDER BY template_name ASC"
 );
 
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 
@@ -177,7 +203,7 @@ name="viewport"
 content="width=device-width, initial-scale=1.0">
 
 <title>
-Edit Timetable
+Edit Timetable | MindMerge SmartCampus
 </title>
 
 <link rel="stylesheet" href="../assets/css/global.css">
@@ -210,7 +236,35 @@ Edit Timetable
 </h1>
 
 <p>
-Update timetable settings and validity dates.
+
+<?php
+
+echo htmlspecialchars(
+$row['class_name']
+);
+
+?>
+
+-
+
+<?php
+
+echo htmlspecialchars(
+$row['section_name']
+);
+
+?>
+
+|
+
+<?php
+
+echo htmlspecialchars(
+$row['template_name']
+);
+
+?>
+
 </p>
 
 </div>
@@ -245,6 +299,14 @@ margin-bottom:20px;
 <?php } ?>
 
 <div class="dashboard-section">
+
+<div class="section-header">
+
+<h2>
+Timetable Details
+</h2>
+
+</div>
 
 <form method="POST">
 
@@ -337,6 +399,18 @@ $template['template_name']
 
 ?>
 
+ (
+
+<?php
+
+echo ucfirst(
+$template['template_type']
+);
+
+?>
+
+)
+
 </option>
 
 <?php
@@ -352,55 +426,6 @@ $template['template_name']
 <div class="form-group">
 
 <label class="form-label">
-Timetable Type
-</label>
-
-<select
-name="timetable_type"
-class="form-select"
-required>
-
-<option
-value="regular"
-<?php if($row['timetable_type']=='regular') echo 'selected'; ?>>
-Regular
-</option>
-
-<option
-value="exam"
-<?php if($row['timetable_type']=='exam') echo 'selected'; ?>>
-Exam
-</option>
-
-<option
-value="special"
-<?php if($row['timetable_type']=='special') echo 'selected'; ?>>
-Special
-</option>
-
-<option
-value="remedial"
-<?php if($row['timetable_type']=='remedial') echo 'selected'; ?>>
-Remedial
-</option>
-
-<option
-value="holiday"
-<?php if($row['timetable_type']=='holiday') echo 'selected'; ?>>
-Holiday
-</option>
-
-</select>
-
-</div>
-
-</div>
-
-<div class="form-grid">
-
-<div class="form-group">
-
-<label class="form-label">
 Academic Year
 </label>
 
@@ -410,32 +435,6 @@ name="academic_year"
 class="form-input"
 value="<?php echo htmlspecialchars($row['academic_year']); ?>"
 required>
-
-</div>
-
-<div class="form-group">
-
-<label class="form-label">
-Status
-</label>
-
-<select
-name="status"
-class="form-select">
-
-<option
-value="active"
-<?php if($row['status']=='active') echo 'selected'; ?>>
-Active
-</option>
-
-<option
-value="inactive"
-<?php if($row['status']=='inactive') echo 'selected'; ?>>
-Inactive
-</option>
-
-</select>
 
 </div>
 
@@ -473,12 +472,37 @@ value="<?php echo $row['effective_to']; ?>">
 
 </div>
 
+<div class="form-group">
+
+<label class="form-label">
+Status
+</label>
+
+<select
+name="status"
+class="form-select">
+
+<option
+value="active"
+<?php if($row['status']=='active') echo 'selected'; ?>>
+Active
+</option>
+
+<option
+value="inactive"
+<?php if($row['status']=='inactive') echo 'selected'; ?>>
+Inactive
+</option>
+
+</select>
+
+</div>
 <div
 style="
 display:flex;
 gap:12px;
 flex-wrap:wrap;
-margin-top:20px;
+margin-top:24px;
 ">
 
 <button
@@ -503,8 +527,6 @@ Cancel
 </div>
 
 </form>
-
-</div>
 
 </div>
 

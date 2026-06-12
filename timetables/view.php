@@ -14,12 +14,11 @@ $conn,
 t.*,
 
 c.class_name,
-
 s.section_name,
 
 pt.template_name,
-
-pt.template_code
+pt.template_code,
+pt.template_type
 
 FROM timetables t
 
@@ -66,7 +65,13 @@ $conn,
 
 FROM periods
 
-WHERE template_id='".$timetable['template_id']."'
+WHERE
+
+template_id='".$timetable['template_id']."'
+
+AND
+
+status='active'
 
 ORDER BY sort_order ASC"
 
@@ -80,7 +85,7 @@ $periods[] = $period;
 
 }
 
-$total_entries = mysqli_fetch_assoc(
+$assigned_entries = mysqli_fetch_assoc(
 
 mysqli_query(
 
@@ -96,9 +101,36 @@ WHERE timetable_id='$timetable_id'"
 
 )['total'];
 
-?>
+$teaching_periods = 0;
 
-<!DOCTYPE html>
+foreach($periods as $period){
+
+if($period['is_teaching_period']=='yes'){
+
+$teaching_periods++;
+
+}
+
+}
+
+$total_slots = $teaching_periods * count($days);
+
+$completion = 0;
+
+if($total_slots > 0){
+
+$completion = round(
+($assigned_entries / $total_slots) * 100
+);
+
+if($completion > 100){
+
+$completion = 100;
+
+}
+
+}
+?><!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -129,7 +161,7 @@ $timetable['section_name']
 
 ?>
 
-Timetable
+| Schedule
 
 </title>
 
@@ -145,10 +177,9 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
 .timetable-table{
 
 width:100%;
+min-width:1100px;
 
 border-collapse:collapse;
-
-min-width:1200px;
 
 background:var(--card);
 
@@ -187,7 +218,7 @@ background:#f8fafc;
 
 font-weight:600;
 
-min-width:180px;
+min-width:140px;
 
 }
 
@@ -207,7 +238,7 @@ background:#eff6ff;
 
 border:1px solid #bfdbfe;
 
-min-height:90px;
+min-height:70px;
 
 display:flex;
 
@@ -215,7 +246,7 @@ flex-direction:column;
 
 justify-content:center;
 
-gap:6px;
+gap:5px;
 
 }
 
@@ -233,11 +264,9 @@ padding:10px;
 
 border-radius:12px;
 
-background:#f9fafb;
+background:#f8fafc;
 
-color:#94a3b8;
-
-min-height:90px;
+min-height:70px;
 
 display:flex;
 
@@ -245,11 +274,37 @@ align-items:center;
 
 justify-content:center;
 
+color:#94a3b8;
+
 }
 
 body.dark-mode .empty-box{
 
 background:#111827;
+
+}
+
+.non-teaching{
+
+padding:16px;
+
+border-radius:12px;
+
+background:#f3f4f6;
+
+font-weight:700;
+
+color:#6b7280;
+
+text-align:center;
+
+}
+
+body.dark-mode .non-teaching{
+
+background:#111827;
+
+color:#9ca3af;
 
 }
 
@@ -271,7 +326,7 @@ color:#2563eb;
 
 }
 
-.summary-grid{
+.info-grid{
 
 display:grid;
 
@@ -279,6 +334,46 @@ grid-template-columns:
 repeat(auto-fit,minmax(220px,1fr));
 
 gap:20px;
+
+}
+
+.info-card{
+
+background:var(--card);
+
+padding:20px;
+
+border-radius:16px;
+
+border:1px solid rgba(148,163,184,.15);
+
+}
+
+body.dark-mode .info-card{
+
+background:#081028;
+
+border-color:#29476d;
+
+}
+
+.info-card h4{
+
+margin-bottom:10px;
+
+font-size:14px;
+
+color:var(--muted);
+
+}
+
+.status-alert{
+
+padding:16px 18px;
+
+border-radius:14px;
+
+font-weight:600;
 
 }
 
@@ -323,7 +418,18 @@ $timetable['section_name']
 ?>
 
 </h1>
+
 <p>
+
+<?php
+
+echo htmlspecialchars(
+$timetable['template_code']
+);
+
+?>
+
+-
 
 <?php
 
@@ -338,12 +444,12 @@ $timetable['template_name']
 <?php
 
 echo ucfirst(
-$timetable['timetable_type']
+$timetable['template_type']
 );
 
 ?>
 
-Timetable
+Schedule
 
 •
 
@@ -358,6 +464,7 @@ $timetable['academic_year']
 ?>
 
 </p>
+
 </div>
 
 <div
@@ -378,21 +485,12 @@ Manage Entries
 </a>
 
 <a
-href="../attendance/index.php?timetable_id=<?php echo $timetable_id; ?>"
-class="btn">
-
-<i class="fa-solid fa-calendar-check"></i>
-
-Attendance
-
-</a>
-<a
 href="edit.php?id=<?php echo $timetable_id; ?>"
 class="btn">
 
 <i class="fa-solid fa-gear"></i>
 
-Edit Timetable
+Edit Schedule
 
 </a>
 
@@ -409,57 +507,154 @@ Back
 </div>
 
 </div>
+
 <div class="dashboard-grid">
+
+<div class="dashboard-card stat-card">
+
+<div class="stat-top">
+
+<div class="card-icon">
+
+<i class="fa-solid fa-calendar-days"></i>
+
+</div>
+
+<h3>
+
+<?php echo count($periods); ?>
+
+</h3>
+
+</div>
+
+<p>
+Total Periods
+</p>
+
+</div>
+
+<div class="dashboard-card stat-card">
+
+<div class="stat-top">
+
+<div class="card-icon">
+
+<i class="fa-solid fa-book"></i>
+
+</div>
+
+<h3>
+
+<?php echo $assigned_entries; ?>
+
+</h3>
+
+</div>
+
+<p>
+Assigned Entries
+</p>
+
+</div>
+
+<div class="dashboard-card stat-card">
+
+<div class="stat-top">
+
+<div class="card-icon">
+
+<i class="fa-solid fa-layer-group"></i>
+
+</div>
+
+<h3>
+
+<?php echo count($days); ?>
+
+</h3>
+
+</div>
+
+<p>
+Working Days
+</p>
+
+</div>
+
+<div class="dashboard-card stat-card">
+
+<div class="stat-top">
+
+<div class="card-icon">
+
+<i class="fa-solid fa-circle-check"></i>
+
+</div>
+
+<h3>
+
+<?php echo $completion; ?>%
+
+</h3>
+
+</div>
+
+<p>
+Completion
+</p>
+
+</div>
+
+</div>
+
 <div class="dashboard-section">
 
 <div class="section-header">
 
 <h2>
-Timetable Information
+Schedule Information
 </h2>
 
 </div>
 
-<div class="dashboard-grid">
+<div class="info-grid">
 
-<div class="dashboard-card">
+<div class="info-card">
 
-<h4 style="margin-bottom:8px;">
-Timetable Type
+<h4>
+Schedule Type
 </h4>
 
-<span class="status <?php
+<span class="status primary">
 
-if($timetable['timetable_type']=='exam'){
-echo 'warning';
-}
-elseif($timetable['timetable_type']=='special'){
-echo 'info';
-}
-elseif($timetable['timetable_type']=='remedial'){
-echo 'secondary';
-}
-else{
-echo 'primary';
-}
+<?php
 
-?>">
+echo ucfirst(
+$timetable['template_type']
+);
 
-<?php echo ucfirst($timetable['timetable_type']); ?>
+?>
 
 </span>
 
 </div>
 
-<div class="dashboard-card">
+<div class="info-card">
 
-<h4 style="margin-bottom:8px;">
-Schedule Template
+<h4>
+Template
 </h4>
 
 <strong>
 
-<?php echo htmlspecialchars($timetable['template_name']); ?>
+<?php
+
+echo htmlspecialchars(
+$timetable['template_name']
+);
+
+?>
 
 </strong>
 
@@ -467,16 +662,42 @@ Schedule Template
 
 <small>
 
-<?php echo htmlspecialchars($timetable['template_code']); ?>
+<?php
+
+echo htmlspecialchars(
+$timetable['template_code']
+);
+
+?>
 
 </small>
 
 </div>
 
-<div class="dashboard-card">
+<div class="info-card">
 
-<h4 style="margin-bottom:8px;">
-Effective From
+<h4>
+Academic Year
+</h4>
+
+<strong>
+
+<?php
+
+echo htmlspecialchars(
+$timetable['academic_year']
+);
+
+?>
+
+</strong>
+
+</div>
+
+<div class="info-card">
+
+<h4>
+Effective Period
 </h4>
 
 <strong>
@@ -498,15 +719,11 @@ $timetable['effective_from']
 
 </strong>
 
-</div>
+<br>
 
-<div class="dashboard-card">
+<small>
 
-<h4 style="margin-bottom:8px;">
-Effective To
-</h4>
-
-<strong>
+To
 
 <?php
 
@@ -523,134 +740,30 @@ $timetable['effective_to']
 
 ?>
 
-</strong>
+</small>
 
 </div>
 
-</div>
+<div class="info-card">
 
-</div>
-<div class="dashboard-card stat-card">
+<h4>
+Status
+</h4>
 
-<div class="stat-top">
-
-<div class="card-icon">
-<i class="fa-solid fa-calendar-days"></i>
-</div>
-
-<h3>
-<?php echo count($periods); ?>
-</h3>
-
-</div>
-
-<p>
-Total Periods
-</p>
-
-</div>
-
-<div class="dashboard-card stat-card">
-
-<div class="stat-top">
-
-<div class="card-icon">
-<i class="fa-solid fa-book"></i>
-</div>
-
-<h3>
-<?php echo $total_entries; ?>
-</h3>
-
-</div>
-
-<p>
-Assigned Entries
-</p>
-
-</div>
-
-<div class="dashboard-card stat-card">
-
-<div class="stat-top">
-
-<div class="card-icon">
-<i class="fa-solid fa-layer-group"></i>
-</div>
-
-<h3>
+<span
+class="status <?php echo ($timetable['status']=='active') ? 'success' : 'danger'; ?>">
 
 <?php
 
-echo count($days);
+echo ucfirst(
+$timetable['status']
+);
 
 ?>
 
-</h3>
+</span>
 
 </div>
-
-<p>
-Working Days
-</p>
-
-</div>
-
-<div class="dashboard-card stat-card">
-
-<div class="stat-top">
-
-<div class="card-icon">
-<i class="fa-solid fa-circle-check"></i>
-</div>
-
-<h3>
-
-<?php
-
-$teaching_periods = 0;
-
-foreach($periods as $p){
-
-if(
-$p['is_teaching_period']=='yes'
-&&
-$p['attendance_allowed']=='yes'
-){
-
-$teaching_periods++;
-
-}
-
-}
-
-$total_slots = $teaching_periods * count($days);
-
-$completion = 0;
-
-if($total_slots > 0){
-
-$completion = round(
-($total_entries / $total_slots) * 100
-);
-
-if($completion > 100){
-$completion = 100;
-}
-
-}
-
-echo $completion;
-
-?>%
-
-</h3>
-
-</div>
-
-<p>
-Timetable Completion
-</p>
 
 </div>
 
@@ -686,11 +799,7 @@ foreach($days as $day){
 
 <th>
 
-<?php
-
-echo ucfirst($day);
-
-?>
+<?php echo ucfirst($day); ?>
 
 </th>
 
@@ -705,8 +814,7 @@ echo ucfirst($day);
 </thead>
 
 <tbody>
-
-<?php
+    <?php
 
 foreach($periods as $period){
 
@@ -715,7 +823,6 @@ foreach($periods as $period){
 <tr>
 
 <td class="period-cell">
-
 <div>
 
 <strong>
@@ -771,7 +878,7 @@ $period['end_time']
 
 foreach($days as $day){
 
-$query = mysqli_query(
+$entry_query = mysqli_query(
 
 $conn,
 
@@ -801,20 +908,16 @@ WHERE
 
 te.timetable_id='$timetable_id'
 
-AND
+AND te.day_of_week='$day'
 
-te.day_of_week='$day'
-
-AND
-
-te.period_id='".$period['period_id']."'
+AND te.period_id='".$period['period_id']."'
 
 LIMIT 1"
 
 );
 
 $entry = mysqli_fetch_assoc(
-$query
+$entry_query
 );
 
 ?>
@@ -823,15 +926,80 @@ $query
 
 <?php
 
-if($entry){
+if(
+
+$period['period_type']=='lunch'
+||
+$period['period_type']=='break'
+||
+$period['period_type']=='exam'
+
+){
 
 ?>
 
-<div class="subject-box">
+<div
+style="
+background:<?php echo htmlspecialchars($period['display_color']); ?>20;
+border:1px solid <?php echo htmlspecialchars($period['display_color']); ?>55;
+color:<?php echo htmlspecialchars($period['display_color']); ?>;
+font-weight:700;
+padding:14px;
+border-radius:12px;
+text-align:center;
+min-height:90px;
+display:flex;
+align-items:center;
+justify-content:center;
+">
+
+<?php
+
+echo htmlspecialchars(
+$period['period_name']
+);
+
+?>
+
+</div>
+
+<?php
+
+}
+else if($period['is_teaching_period'] == 'no'){
+
+?>
+
+<div class="non-teaching">
+
+<?php
+
+echo htmlspecialchars(
+$period['period_name']
+);
+
+?>
+
+</div>
+
+<?php
+
+}
+else if($entry){
+
+?>
+
+<div
+class="subject-box"
+style="
+background:<?php echo htmlspecialchars($period['display_color']); ?>20;
+border:1px solid <?php echo htmlspecialchars($period['display_color']); ?>55;
+">
 
 <div
 style="
-font-weight:600;
+font-weight:700;
+color:<?php echo htmlspecialchars($period['display_color']); ?>;
 ">
 
 <?php
@@ -862,10 +1030,46 @@ if(!empty($entry['room_no'])){
 
 ?>
 
-<div class="room-name">
+<div
+class="room-name"
+style="
+color:<?php echo htmlspecialchars($period['display_color']); ?>;
+">
 
 Room:
-<?php echo htmlspecialchars($entry['room_no']); ?>
+
+<?php
+
+echo htmlspecialchars(
+$entry['room_no']
+);
+
+?>
+
+</div>
+
+<?php
+
+}
+
+if(!empty($entry['remarks'])){
+
+?>
+
+<div
+style="
+font-size:11px;
+margin-top:6px;
+color:var(--muted);
+">
+
+<?php
+
+echo htmlspecialchars(
+$entry['remarks']
+);
+
+?>
 
 </div>
 
@@ -876,7 +1080,6 @@ Room:
 ?>
 
 </div>
-
 <?php
 
 }
@@ -884,7 +1087,13 @@ else{
 
 ?>
 
-<div class="empty-box">
+<div
+class="empty-box"
+style="
+background:<?php echo htmlspecialchars($period['display_color']); ?>15;
+color:<?php echo htmlspecialchars($period['display_color']); ?>;
+border:1px solid <?php echo htmlspecialchars($period['display_color']); ?>25;
+">
 
 Unassigned
 
@@ -900,7 +1109,7 @@ Unassigned
 
 <?php
 
-}
+} // foreach($days as $day)
 
 ?>
 
@@ -908,7 +1117,7 @@ Unassigned
 
 <?php
 
-}
+} // foreach($periods as $period)
 
 ?>
 
@@ -937,12 +1146,10 @@ if($completion < 100){
 ?>
 
 <div
+class="status-alert"
 style="
-padding:16px;
-border-radius:12px;
 background:#fef3c7;
 color:#92400e;
-font-weight:500;
 ">
 
 <i class="fa-solid fa-triangle-exclamation"></i>
@@ -951,11 +1158,14 @@ This timetable is incomplete.
 
 <?php
 
-echo ($total_slots - $total_entries);
+echo max(
+0,
+$total_slots - $assigned_entries
+);
 
 ?>
 
-teaching slot(s) still require subject allocation.
+teaching slot(s) still need assignment.
 
 </div>
 
@@ -967,17 +1177,15 @@ else{
 ?>
 
 <div
+class="status-alert"
 style="
-padding:16px;
-border-radius:12px;
 background:#dcfce7;
 color:#166534;
-font-weight:500;
 ">
 
 <i class="fa-solid fa-circle-check"></i>
 
-Timetable is fully configured.
+Timetable is fully configured and ready for attendance usage.
 
 </div>
 

@@ -15,11 +15,21 @@ ORDER BY class_name ASC"
 );
 
 $section_query = mysqli_query(
+
 $conn,
-"SELECT *
+
+"SELECT
+
+section_id,
+class_id,
+section_name
+
 FROM sections
+
 WHERE status='active'
+
 ORDER BY section_name ASC"
+
 );
 
 if(isset($_POST['add_student'])){
@@ -472,6 +482,7 @@ Class
 
 <select
 name="class_id"
+id="class_id"
 class="form-select"
 required>
 
@@ -512,33 +523,13 @@ Section
 
 <select
 name="section_id"
+id="section_id"
 class="form-select"
 required>
 
 <option value="">
-Select Section
+Select Class First
 </option>
-
-<?php
-
-mysqli_data_seek($section_query,0);
-
-while($section = mysqli_fetch_assoc($section_query)){
-
-?>
-
-<option
-value="<?php echo $section['section_id']; ?>">
-
-<?php
-echo htmlspecialchars(
-$section['section_name']
-);
-?>
-
-</option>
-
-<?php } ?>
 
 </select>
 
@@ -599,6 +590,76 @@ Cancel
 </div>
 
 <script src="../assets/js/common.js"></script>
+<script>
+
+const sections = [
+
+<?php
+
+mysqli_data_seek(
+$section_query,
+0
+);
+
+while($section = mysqli_fetch_assoc($section_query)){
+
+?>
+
+{
+id:'<?php echo $section['section_id']; ?>',
+class_id:'<?php echo $section['class_id']; ?>',
+name:'<?php echo htmlspecialchars($section['section_name'],ENT_QUOTES); ?>'
+},
+
+<?php
+
+}
+
+?>
+
+];
+
+const classSelect =
+document.getElementById('class_id');
+
+const sectionSelect =
+document.getElementById('section_id');
+
+classSelect.addEventListener(
+'change',
+function(){
+
+const classId = this.value;
+
+sectionSelect.innerHTML =
+'<option value="">Select Section</option>';
+
+if(classId===''){
+sectionSelect.innerHTML =
+'<option value="">Select Class First</option>';
+return;
+}
+
+sections.forEach(function(section){
+
+if(section.class_id===classId){
+
+sectionSelect.innerHTML +=
+
+'<option value="' +
+section.id +
+'">' +
+section.name +
+'</option>';
+
+}
+
+});
+
+}
+);
+
+</script>
 
 </body>
 </html>

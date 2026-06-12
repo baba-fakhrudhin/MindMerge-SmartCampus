@@ -153,21 +153,37 @@ table.querySelectorAll('tbody tr')
 
 rows.sort((a,b)=>{
 
-const aText =
-a.children[index]
-?.innerText
-.trim()
-.toLowerCase();
+const aCell =
+a.children[index];
 
-const bText =
-b.children[index]
-?.innerText
-.trim()
-.toLowerCase();
+const bCell =
+b.children[index];
+
+const aValue =
+aCell.dataset.value ||
+aCell.innerText.trim().toLowerCase();
+
+const bValue =
+bCell.dataset.value ||
+bCell.innerText.trim().toLowerCase();
+
+const aNum = Number(aValue);
+const bNum = Number(bValue);
+
+if(
+!isNaN(aNum) &&
+!isNaN(bNum)
+){
 
 return asc
-? aText.localeCompare(bText)
-: bText.localeCompare(aText);
+? aNum - bNum
+: bNum - aNum;
+
+}
+
+return asc
+? aValue.localeCompare(bValue)
+: bValue.localeCompare(aValue);
 
 });
 
