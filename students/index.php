@@ -530,57 +530,7 @@ No students found.
 
 </div>
 
-<div class="dashboard-section">
 
-<div class="section-header">
-
-<h2>
-Module Information
-</h2>
-
-</div>
-
-<p>
-
-Student records are connected to:
-
-</p>
-
-<br>
-
-<ul
-style="
-padding-left:20px;
-line-height:2;
-">
-
-<li>
-Classes
-</li>
-
-<li>
-Sections
-</li>
-
-<li>
-Attendance
-</li>
-
-<li>
-Examinations
-</li>
-
-<li>
-Results
-</li>
-
-<li>
-Parent Communication
-</li>
-
-</ul>
-
-</div>
 
 </div>
 

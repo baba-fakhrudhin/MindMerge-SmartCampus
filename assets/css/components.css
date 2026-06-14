@@ -581,7 +581,69 @@ margin:0;
 margin-top:24px;
 }
 
+.perm-role-picker{
+display:flex;
+gap:12px;
+margin-bottom:20px;
+flex-wrap:wrap;
+}
 
+.perm-role-btn{
+display:inline-flex;
+align-items:center;
+justify-content:center;
+
+padding:12px 20px;
+
+border-radius:12px;
+
+background:#f8fafc;
+
+border:2px solid transparent;
+
+font-weight:600;
+
+text-decoration:none;
+
+color:var(--text);
+
+transition:.25s;
+}
+
+.perm-role-btn:hover{
+transform:translateY(-2px);
+border-color:rgba(37,99,235,.25);
+}
+
+.perm-role-btn.active{
+
+background:rgba(37,99,235,.12);
+
+border-color:var(--primary);
+
+color:var(--primary);
+
+box-shadow:
+0 0 0 4px rgba(37,99,235,.10);
+
+}
+body.dark-mode .perm-role-btn{
+
+background:#182642;
+
+color:#fff;
+
+}
+
+body.dark-mode .perm-role-btn.active{
+
+background:rgba(37,99,235,.20);
+
+border-color:#3b82f6;
+
+color:#60a5fa;
+
+}
 
 /* RESPONSIVE */
 
@@ -627,6 +689,289 @@ min-width:650px;
 
 }
 
+/* PROFILE EDIT GUARD handled in profile/index.php */
+
+.btn-secondary{
+background:#e2e8f0;
+color:#334155;
+}
+
+.btn-secondary:hover{
+background:#cbd5e1;
+}
+
+.alert{
+padding:14px 18px;
+border-radius:12px;
+margin-bottom:20px;
+display:flex;
+align-items:center;
+gap:10px;
+font-size:14px;
+font-weight:500;
+}
+
+.alert-success{
+background:rgba(34,197,94,0.12);
+color:#15803d;
+border:1px solid rgba(34,197,94,0.25);
+}
+
+.alert-danger{
+background:rgba(239,68,68,0.12);
+color:#b91c1c;
+border:1px solid rgba(239,68,68,0.25);
+}
+
+.alert-warning{
+background:rgba(245,158,11,0.12);
+color:#b45309;
+border:1px solid rgba(245,158,11,0.25);
+}
+
+.form-actions{
+display:flex;
+gap:12px;
+flex-wrap:wrap;
+margin-top:24px;
+}
+
+.empty-state{
+text-align:center;
+padding:48px 24px;
+color:var(--muted);
+}
+
+.empty-state i{
+font-size:42px;
+margin-bottom:16px;
+color:var(--primary);
+opacity:0.85;
+}
+
+.empty-state h3{
+margin-bottom:8px;
+color:var(--text);
+}
+
+/* PERMISSIONS ADMIN */
+
+.perm-tabs{
+display:flex;
+gap:10px;
+margin-bottom:24px;
+flex-wrap:wrap;
+}
+
+.perm-tab{
+display:inline-flex;
+align-items:center;
+gap:8px;
+padding:12px 18px;
+border-radius:12px;
+background:var(--card);
+color:var(--text);
+text-decoration:none;
+font-weight:600;
+font-size:14px;
+box-shadow:var(--shadow);
+border:1px solid rgba(148,163,184,0.15);
+transition:0.3s;
+}
+
+.perm-tab:hover,
+.perm-tab.active{
+background:var(--primary);
+color:white;
+}
+
+.perm-role-picker{
+display:flex;
+gap:10px;
+margin-bottom:24px;
+flex-wrap:wrap;
+}
+
+.perm-role-btn{
+padding:10px 16px;
+border-radius:10px;
+background:#f1f5f9;
+color:#334155;
+text-decoration:none;
+font-weight:600;
+font-size:14px;
+transition:0.3s;
+}
+
+.perm-role-btn.active,
+.perm-role-btn:hover{
+background:var(--primary);
+color:white;
+}
+
+.perm-matrix-wrap{
+overflow-x:auto;
+margin-top:8px;
+}
+
+.perm-matrix-table{
+min-width:720px;
+}
+
+.perm-module-name strong{
+display:block;
+}
+
+.perm-module-name span{
+display:block;
+font-size:12px;
+color:var(--muted);
+margin-top:4px;
+font-weight:400;
+}
+
+.perm-check{
+display:flex;
+justify-content:center;
+cursor:pointer;
+}
+
+.perm-check input{
+width:18px;
+height:18px;
+accent-color:var(--primary);
+cursor:pointer;
+}
+
+.perm-na{
+text-align:center;
+color:var(--muted);
+}
+
+.perm-effective{
+display:inline-flex;
+align-items:center;
+justify-content:center;
+min-width:72px;
+padding:6px 10px;
+border-radius:999px;
+font-size:12px;
+font-weight:600;
+}
+
+.perm-effective.granted{
+background:rgba(34,197,94,0.12);
+color:#15803d;
+}
+
+.perm-effective.denied{
+background:rgba(239,68,68,0.12);
+color:#b91c1c;
+}
+
+.perm-user-banner{
+display:flex;
+align-items:center;
+gap:16px;
+padding:18px 20px;
+background:#f8fafc;
+border-radius:14px;
+margin-bottom:20px;
+border:1px solid #e2e8f0;
+}
+
+.perm-user-banner i{
+font-size:28px;
+color:var(--primary);
+}
+
+.perm-user-select-form{
+max-width:420px;
+margin-bottom:24px;
+}
+
+.perm-override-select{
+min-width:180px;
+padding:8px 12px;
+font-size:13px;
+}
+
+/* ACCESS DENIED */
+
+.access-denied-page{
+min-height:100vh;
+display:flex;
+align-items:center;
+justify-content:center;
+padding:24px;
+background:var(--bg);
+}
+
+.access-denied-card{
+max-width:520px;
+width:100%;
+background:var(--card);
+border-radius:var(--radius-lg);
+box-shadow:var(--shadow);
+padding:40px 32px;
+text-align:center;
+border:1px solid rgba(148,163,184,0.15);
+}
+
+.access-denied-icon{
+width:80px;
+height:80px;
+border-radius:50%;
+background:rgba(239,68,68,0.12);
+color:#ef4444;
+display:flex;
+align-items:center;
+justify-content:center;
+font-size:34px;
+margin:0 auto 20px;
+}
+
+.access-denied-actions{
+display:flex;
+gap:12px;
+justify-content:center;
+flex-wrap:wrap;
+margin-top:24px;
+}
+
+.sidebar-logo-link{
+text-decoration:none;
+color:white;
+display:flex;
+align-items:center;
+gap:12px;
+}
+
+body.dark-mode .perm-user-banner{
+background:#0f172a;
+border-color:#1e293b;
+}
+
+body.dark-mode .perm-role-btn{
+background:#1e293b;
+color:#e2e8f0;
+}
+
+body.dark-mode .alert-success{
+background:rgba(34,197,94,0.15);
+color:#86efac;
+}
+
+body.dark-mode .alert-danger{
+background:rgba(239,68,68,0.15);
+color:#fca5a5;
+}
+
+body.dark-mode .alert-warning{
+background:rgba(245,158,11,0.15);
+color:#fcd34d;
+}
+
 @media(max-width:600px){
 
 .dashboard-grid{
@@ -646,6 +991,15 @@ padding:16px;
 
 .btn{
 width:100%;
+}
+
+.perm-tabs,
+.perm-role-picker{
+flex-direction:column;
+}
+
+.access-denied-actions{
+flex-direction:column;
 }
 
 }

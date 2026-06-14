@@ -57,6 +57,10 @@ mysqli_fetch_assoc($result);
 
 if(isset($_POST['save_profile'])){
 
+if(!canEdit('profile')){
+    permission_deny_and_exit();
+}
+
 $full_name =
 mysqli_real_escape_string(
 $conn,
@@ -82,7 +86,7 @@ $_FILES['profile_photo']['name'] != ""
 ){
 
 $allowed =
-['jpg','jpeg','png','webp','svg'];
+['jpg','jpeg','png','webp'];
 
 $file =
 $_FILES['profile_photo'];
@@ -660,7 +664,7 @@ Choose Profile Image
 </h4>
 
 <p id="uploadSubtext">
-PNG, JPG, WEBP, SVG
+PNG, JPG, WEBP
 </p>
 
 </div>
@@ -669,7 +673,7 @@ PNG, JPG, WEBP, SVG
 type="file"
 name="profile_photo"
 id="profilePhotoInput"
-accept=".png,.jpg,.jpeg,.webp,.svg">
+accept=".png,.jpg,.jpeg,.webp">
 
 </label>
 </div>

@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Jun 12, 2026 at 08:15 AM
+-- Generation Time: Jun 12, 2026 at 04:23 PM
 -- Server version: 10.4.25-MariaDB
 -- PHP Version: 8.1.10
 
@@ -114,6 +114,76 @@ CREATE TABLE `classes` (
 INSERT INTO `classes` (`class_id`, `class_code`, `class_name`, `description`, `status`, `created_at`) VALUES
 (12, 'CSE', 'Computer Science & Engineering', '', 'active', '2026-06-11 05:25:04'),
 (13, 'CAI', 'Computer Science & Engineering AI', '', 'active', '2026-06-11 05:26:06');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `notifications`
+--
+
+CREATE TABLE `notifications` (
+  `id` int(11) NOT NULL,
+  `title` varchar(200) NOT NULL,
+  `message` text NOT NULL,
+  `type` enum('general','exam','fee','attendance','result','announcement','holiday','event','transport','emergency') NOT NULL DEFAULT 'general',
+  `created_by` int(11) DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+--
+-- Dumping data for table `notifications`
+--
+
+INSERT INTO `notifications` (`id`, `title`, `message`, `type`, `created_by`, `created_at`) VALUES
+(1, 'All students should attend to class properly', 'Message to all students', 'attendance', 24, '2026-06-12 12:42:31');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `notification_reads`
+--
+
+CREATE TABLE `notification_reads` (
+  `read_id` int(11) NOT NULL,
+  `notification_id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `read_at` datetime DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `notification_targets`
+--
+
+CREATE TABLE `notification_targets` (
+  `target_id` int(11) NOT NULL,
+  `notification_id` int(11) NOT NULL,
+  `target_type` enum('role','class','section','student','teacher') DEFAULT NULL,
+  `target_value` varchar(100) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+--
+-- Dumping data for table `notification_targets`
+--
+
+INSERT INTO `notification_targets` (`target_id`, `notification_id`, `target_type`, `target_value`) VALUES
+(1, 1, 'student', 'STU00007');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `notification_templates`
+--
+
+CREATE TABLE `notification_templates` (
+  `template_id` int(11) NOT NULL,
+  `template_name` varchar(100) NOT NULL,
+  `type` varchar(50) NOT NULL,
+  `title` varchar(200) NOT NULL,
+  `message` text NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- --------------------------------------------------------
 
@@ -484,6 +554,33 @@ ALTER TABLE `classes`
   ADD UNIQUE KEY `unique_class_code` (`class_code`);
 
 --
+-- Indexes for table `notifications`
+--
+ALTER TABLE `notifications`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_type` (`type`),
+  ADD KEY `idx_created_at` (`created_at`);
+
+--
+-- Indexes for table `notification_reads`
+--
+ALTER TABLE `notification_reads`
+  ADD PRIMARY KEY (`read_id`),
+  ADD UNIQUE KEY `unique_read` (`notification_id`,`user_id`);
+
+--
+-- Indexes for table `notification_targets`
+--
+ALTER TABLE `notification_targets`
+  ADD PRIMARY KEY (`target_id`);
+
+--
+-- Indexes for table `notification_templates`
+--
+ALTER TABLE `notification_templates`
+  ADD PRIMARY KEY (`template_id`);
+
+--
 -- Indexes for table `parents`
 --
 ALTER TABLE `parents`
@@ -600,6 +697,30 @@ ALTER TABLE `attendance_records`
 --
 ALTER TABLE `classes`
   MODIFY `class_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
+
+--
+-- AUTO_INCREMENT for table `notifications`
+--
+ALTER TABLE `notifications`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
+-- AUTO_INCREMENT for table `notification_reads`
+--
+ALTER TABLE `notification_reads`
+  MODIFY `read_id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `notification_targets`
+--
+ALTER TABLE `notification_targets`
+  MODIFY `target_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
+-- AUTO_INCREMENT for table `notification_templates`
+--
+ALTER TABLE `notification_templates`
+  MODIFY `template_id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `parents`
@@ -732,3 +853,7 @@ COMMIT;
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+
+-- --------------------------------------------------------
+-- Permission system (Phase 1) — see database/migrations/permissions_system.sql
+-- Tables: permissions, role_permissions, user_permissions

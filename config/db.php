@@ -1,5 +1,9 @@
 <?php
 
+if (isset($conn) && $conn instanceof mysqli) {
+    return;
+}
+
 $host = "localhost";
 $user = "root";
 $password = "";

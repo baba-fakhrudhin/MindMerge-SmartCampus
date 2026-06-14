@@ -469,61 +469,6 @@ No classes found.
 
 </div>
 
-<!-- CLASS SUMMARY -->
-
-<div class="dashboard-section">
-
-<div class="section-header">
-
-<h2>
-Module Information
-</h2>
-
-</div>
-
-<p>
-
-Classes are the foundation of the academic structure.
-
-Each class will later contain:
-
-</p>
-
-<br>
-
-<ul
-style="
-padding-left:20px;
-line-height:2;
-">
-
-<li>
-Sections
-</li>
-
-<li>
-Students
-</li>
-
-<li>
-Subjects
-</li>
-
-<li>
-Attendance Records
-</li>
-
-<li>
-Examinations
-</li>
-
-<li>
-Results
-</li>
-
-</ul>
-
-</div>
 
 </div>
 

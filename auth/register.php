@@ -341,10 +341,6 @@ required>
 Select Role
 </option>
 
-<option value="admin">
-Admin
-</option>
-
 <option value="teacher">
 Teacher
 </option>
@@ -866,10 +862,6 @@ adminFields.style.display = 'none';
 studentFields.style.display = 'none';
 teacherFields.style.display = 'none';
 parentFields.style.display = 'none';
-
-if(roleSelect.value === 'admin'){
-adminFields.style.display = 'block';
-}
 
 if(roleSelect.value === 'student'){
 studentFields.style.display = 'block';

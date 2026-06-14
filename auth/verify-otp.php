@@ -165,6 +165,14 @@ $data['phone']
 $role =
 $data['role'];
 
+if(!in_array($role, ['teacher','student','parent'], true)){
+
+$error =
+"Invalid registration role.";
+
+}
+else{
+
 $password =
 password_hash(
 $data['password'],
@@ -172,13 +180,6 @@ PASSWORD_DEFAULT
 );
 
 $admin_id = '';
-
-if($role == 'admin'){
-
-$admin_id =
-generateAdminId($conn);
-
-}
 
 $query = "
 
@@ -218,10 +219,10 @@ mysqli_insert_id($conn);
 if($role == 'student'){
 
 $class_id =
-$data['class_id'];
+intval($data['class_id'] ?? 0);
 
 $section_id =
-$data['section_id'];
+intval($data['section_id'] ?? 0);
 
 $class_name = '';
 $section_name = '';
@@ -279,6 +280,8 @@ INSERT INTO students(
 
 user_id,
 student_id,
+class_id,
+section_id,
 class_name,
 section_name,
 dob,
@@ -292,12 +295,14 @@ VALUES(
 
 '$user_id',
 '$student_id',
+'$class_id',
+'$section_id',
 '$class_name',
 '$section_name',
-'".$data['dob']."',
-'".$data['gender']."',
-'".$data['address']."',
-'".$data['parent_phone']."'
+'".mysqli_real_escape_string($conn, $data['dob'] ?? '')."',
+'".mysqli_real_escape_string($conn, $data['gender'] ?? '')."',
+'".mysqli_real_escape_string($conn, $data['address'] ?? '')."',
+'".mysqli_real_escape_string($conn, $data['parent_phone'] ?? '')."'
 
 )
 
@@ -339,8 +344,8 @@ VALUES(
 '$teacher_id',
 '".$data['teacher_class_id']."',
 '".$data['teacher_section_id']."',
-'".$data['subject_name']."',
-'".$data['qualification']."'
+'".mysqli_real_escape_string($conn, $data['subject_name'] ?? '')."',
+'".mysqli_real_escape_string($conn, $data['qualification'] ?? '')."'
 
 )
 
@@ -378,8 +383,8 @@ VALUES(
 
 '$user_id',
 '$parent_id',
-'".$data['student_id']."',
-'".$data['relationship_name']."'
+'".mysqli_real_escape_string($conn, $data['student_id'] ?? '')."',
+'".mysqli_real_escape_string($conn, $data['relationship_name'] ?? '')."'
 
 )
 
@@ -399,6 +404,8 @@ $success =
 
 $error =
 "Failed to create account";
+
+}
 
 }
 

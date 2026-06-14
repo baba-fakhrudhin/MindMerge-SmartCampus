@@ -264,6 +264,7 @@ $overall_attendance_rate = round(
     <link rel="stylesheet" href="../assets/css/global.css">
     <link rel="stylesheet" href="../assets/css/layout.css">
     <link rel="stylesheet" href="../assets/css/components.css">
+    <link rel="stylesheet" href="../assets/css/portals.css">
 
     <link
     rel="stylesheet"
@@ -320,10 +321,11 @@ $overall_attendance_rate = round(
     </h1>
 
     <p>
-    Manage student attendance, teacher attendance and attendance analytics.
+    Manage student attendance, teacher attendance, reports and analytics.
     </p>
     </div>
 
+    <?php if (canCreate('attendance')) { ?>
     <a
     href="mark.php"
     class="btn btn-primary">
@@ -332,6 +334,37 @@ $overall_attendance_rate = round(
 
     Mark Attendance
 
+    </a>
+    <?php } ?>
+
+    </div>
+
+    <div class="attendance-hub-grid">
+
+    <a href="mark.php" class="hub-card">
+    <i class="fa-solid fa-user-graduate"></i>
+    <h3>Student Attendance</h3>
+    <p>Mark and manage daily student attendance sessions.</p>
+    </a>
+
+    <?php if (canView('teacher_attendance')) { ?>
+    <a href="teacher/index.php" class="hub-card">
+    <i class="fa-solid fa-chalkboard-user"></i>
+    <h3>Teacher Attendance</h3>
+    <p>Track and mark staff attendance records.</p>
+    </a>
+    <?php } ?>
+
+    <a href="report.php" class="hub-card">
+    <i class="fa-solid fa-chart-column"></i>
+    <h3>Reports</h3>
+    <p>Generate attendance reports and summaries.</p>
+    </a>
+
+    <a href="index.php#analytics" class="hub-card">
+    <i class="fa-solid fa-chart-line"></i>
+    <h3>Analytics</h3>
+    <p>View institution-wide attendance analytics.</p>
     </a>
 
     </div>

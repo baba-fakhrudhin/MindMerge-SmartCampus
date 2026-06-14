@@ -2,8 +2,31 @@
 <?php
 
 require_once __DIR__ . '/../config/constants.php';
+require_once __DIR__ . '/../config/permissions.php';
+require_once __DIR__ . '/../shared/helpers/portal.php';
 
 $current_page = basename($_SERVER['PHP_SELF']);
+$uri = $_SERVER['REQUEST_URI'] ?? '';
+$menu_groups = permission_portal_menu_groups();
+$role = portal_get_role();
+
+$logo_url = permission_role_dashboard_url();
+
+function sidebar_resolve_url(array $config, string $role, string $module_key = ''): string
+{
+    if ($module_key === 'dashboard' || ($config['label'] ?? '') === 'Dashboard') {
+        return permission_role_dashboard_url();
+    }
+
+    if ($module_key === 'profile' || ($config['label'] ?? '') === 'Profile') {
+        if ($role === 'admin') {
+            return BASE_URL . 'profile/index.php';
+        }
+        return BASE_URL . $role . '/profile/index.php';
+    }
+
+    return BASE_URL . ($config['url'] ?? '#');
+}
 
 ?>
 
@@ -12,7 +35,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
 
 <div class="sidebar-logo">
 
-<a href="<?php echo BASE_URL; ?>dashboard/index.php" class="logo-box" style="text-decoration:none;color:white;">
+<a href="<?php echo $logo_url; ?>" class="logo-box sidebar-logo-link" style="text-decoration:none">
 
 <i class="fa-solid fa-graduation-cap"></i>
 
@@ -26,154 +49,45 @@ $current_page = basename($_SERVER['PHP_SELF']);
 
 </button>
 
+<button class="sidebar-collapse-toggle" id="sidebarCollapseToggle" type="button" title="Toggle sidebar">
+
+<i class="fa-solid fa-angles-left"></i>
+
+</button>
+
 </div>
 
 <ul class="sidebar-menu">
 
+<?php foreach ($menu_groups as $group) { ?>
+
+<li class="sidebar-group-label">
+
+<span><?php echo htmlspecialchars($group['label']); ?></span>
+
+</li>
+
+<?php foreach ($group['items'] as $module_key => $config) {
+    $is_active = permission_menu_is_active($config, $current_page, $uri,$module_key);
+    $href = sidebar_resolve_url($config, $role, $module_key);
+?>
 <li>
 
 <a
-href="<?php echo BASE_URL; ?>profile/index.php"
-class="<?php if($current_page == 'index.php' && strpos($_SERVER['REQUEST_URI'],'profile')) echo 'active'; ?>"
+href="<?php echo htmlspecialchars($href); ?>"
+class="<?php echo $is_active ? 'active' : ''; ?>"
 >
 
-<i class="fa-solid fa-user"></i>
+<i class="fa-solid <?php echo htmlspecialchars($config['icon'] ?? 'fa-circle'); ?>"></i>
 
-<span>Profile</span>
-
-</a>
-
-</li>
-
-<li>
-
-<a
-href="<?php echo BASE_URL; ?>dashboard/index.php"
-class="<?php if($current_page == 'index.php' && strpos($_SERVER['REQUEST_URI'],'dashboard')) echo 'active'; ?>"
->
-
-<i class="fa-solid fa-house"></i>
-
-<span>Dashboard</span>
+<span><?php echo htmlspecialchars($config['label'] ?? $module_key); ?></span>
 
 </a>
 
 </li>
+<?php } ?>
 
-<li>
-
-<a
-href="<?php echo BASE_URL; ?>classes/index.php"
-class="<?php echo strpos($_SERVER['REQUEST_URI'],'/classes/') !== false ? 'active' : ''; ?>">
-
-<i class="fa-solid fa-school"></i>
-
-<span>Classes</span>
-
-</a>
-
-</li>
-<li>
-
-<a
-href="<?php echo BASE_URL; ?>sections/index.php"
-class="<?php echo strpos($_SERVER['REQUEST_URI'],'/sections/') !== false ? 'active' : ''; ?>">
-
-<i class="fa-solid fa-layer-group"></i>
-
-<span>Sections</span>
-
-</a>
-
-</li>
-<li>
-
-
-<a
-href="<?php echo BASE_URL; ?>students/index.php"
-class="<?php echo strpos($_SERVER['REQUEST_URI'],'/students/') !== false ? 'active' : ''; ?>"
->
-
-<i class="fa-solid fa-user-graduate"></i>
-
-<span>Students</span>
-
-</a>
-
-</li>
-
-<li>
-
-<a
-href="<?php echo BASE_URL; ?>teachers/index.php"
-class="<?php echo strpos($_SERVER['REQUEST_URI'],'/teachers/') || strpos($_SERVER['REQUEST_URI'],'/subjects/') || strpos($_SERVER['REQUEST_URI'],'/teacher_assignments/') !== false ? 'active' : ''; ?>"
->
-
-<i class="fa-solid fa-chalkboard-user"></i>
-
-<span>Teachers</span>
-
-</a>
-
-</li>
-<li>
-
-<a
-href="<?php echo BASE_URL; ?>period_templates/index.php"
-class="<?php if(strpos($_SERVER['REQUEST_URI'],'period_templates') || strpos($_SERVER['REQUEST_URI'],'periods')) echo 'active'; ?>">
-
-<i class="fa-solid fa-clock"></i>
-
-<span>Schedules</span>
-
-</a>
-
-</li>
-<li>
-
-<a
-href="<?php echo BASE_URL; ?>timetables/index.php"
-
-class="<?php if(strpos($_SERVER['REQUEST_URI'],'timetables') ) echo 'active'; ?>">
-
-<i class="fa-solid fa-calendar-days"></i>
-
-<span>
-Timetables
-</span>
-
-</a>
-
-</li>
-<li>
-
-<a
-href="<?php echo BASE_URL; ?>attendance/index.php"
-class="<?php echo strpos($_SERVER['REQUEST_URI'],'/attendance/') !== false ? 'active' : ''; ?>"
->
-
-<i class="fa-solid fa-calendar-check"></i>
-
-<span>Attendance</span>
-
-</a>
-
-</li>
-
-<li>
-
-<a
-href="<?php echo BASE_URL; ?>exams/index.php"
-class="<?php echo strpos($_SERVER['REQUEST_URI'],'/exams/') !== false ? 'active' : ''; ?>"
->
-
-<i class="fa-solid fa-file-lines"></i>
-
-<span>Exams</span>
-
-</a>
-
-</li>
+<?php } ?>
 
 </ul>
 

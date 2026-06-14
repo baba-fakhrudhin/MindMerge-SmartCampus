@@ -1,0 +1,223 @@
+/* Portal sidebar groups */
+.sidebar-group-label{
+padding:18px 22px 6px;
+list-style:none;
+}
+
+.sidebar-group-label span{
+font-size:11px;
+font-weight:700;
+letter-spacing:0.08em;
+text-transform:uppercase;
+color:rgba(148,163,184,0.85);
+}
+
+body.dark-mode .sidebar-group-label span{
+color:rgba(203,213,225,0.7);
+}
+
+/* Portal dashboards */
+.portal-greeting{
+margin-bottom:8px;
+font-size:15px;
+color:var(--muted);
+}
+
+.portal-greeting strong{
+color:var(--text);
+}
+
+.portal-stats-grid{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+gap:16px;
+}
+
+.portal-charts-grid{
+display:grid;
+grid-template-columns:repeat(2,1fr);
+gap:20px;
+margin-top:24px;
+}
+
+.portal-chart-card{
+background:var(--card);
+border-radius:var(--radius-lg);
+padding:24px;
+box-shadow:var(--shadow);
+border:1px solid rgba(148,163,184,.12);
+}
+
+.portal-chart-card h3{
+margin-bottom:16px;
+font-size:16px;
+}
+
+.portal-chart-card canvas{
+max-height:260px;
+}
+
+.portal-insights-grid{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+gap:16px;
+margin-top:24px;
+}
+
+.insight-card{
+background:var(--card);
+border-radius:16px;
+padding:20px;
+border:1px solid rgba(148,163,184,.12);
+}
+
+.insight-card h4{
+margin-bottom:10px;
+font-size:15px;
+}
+
+.insight-card ul{
+margin:0;
+padding-left:18px;
+color:var(--muted);
+font-size:14px;
+}
+
+.insight-card li{
+margin-bottom:6px;
+}
+
+.schedule-list{
+display:flex;
+flex-direction:column;
+gap:10px;
+}
+
+.schedule-item{
+display:flex;
+justify-content:space-between;
+align-items:center;
+padding:12px 16px;
+background:var(--card);
+border-radius:12px;
+border:1px solid rgba(148,163,184,.12);
+font-size:14px;
+}
+
+.schedule-item.current{
+border-color:var(--primary);
+background:rgba(37,99,235,0.06);
+}
+
+/* Attendance hub */
+.attendance-hub-grid{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
+gap:16px;
+margin-bottom:28px;
+}
+
+.hub-card{
+background:var(--card);
+border-radius:18px;
+padding:24px;
+text-decoration:none;
+color:inherit;
+border:1px solid rgba(148,163,184,.15);
+transition:0.25s;
+display:block;
+}
+
+.hub-card:hover{
+transform:translateY(-3px);
+box-shadow:var(--shadow);
+}
+
+.hub-card i{
+font-size:28px;
+color:var(--primary);
+margin-bottom:12px;
+}
+
+.hub-card h3{
+margin-bottom:8px;
+}
+
+.hub-card p{
+color:var(--muted);
+font-size:14px;
+}
+
+/* Digital ID */
+.digital-id-card{
+max-width:420px;
+margin:0 auto;
+background:linear-gradient(145deg,#172554,#1e3a8a);
+color:white;
+border-radius:20px;
+padding:28px;
+box-shadow:0 20px 50px rgba(0,0,0,0.2);
+}
+
+.digital-id-header{
+text-align:center;
+margin-bottom:20px;
+}
+
+.digital-id-photo{
+width:100px;
+height:100px;
+border-radius:50%;
+object-fit:cover;
+border:3px solid rgba(255,255,255,0.3);
+margin:0 auto 12px;
+display:block;
+}
+
+.digital-id-letter{
+width:100px;
+height:100px;
+border-radius:50%;
+background:rgba(255,255,255,0.15);
+display:flex;
+align-items:center;
+justify-content:center;
+font-size:36px;
+font-weight:700;
+margin:0 auto 12px;
+}
+
+.digital-id-qr{
+text-align:center;
+margin-top:16px;
+padding:12px;
+background:white;
+border-radius:12px;
+display:inline-block;
+}
+
+.digital-id-details{
+font-size:14px;
+line-height:1.8;
+}
+
+.digital-id-details strong{
+display:inline-block;
+min-width:90px;
+}
+
+/* Print profile */
+@media print{
+.sidebar,.topbar,.page-header .btn,.no-print{display:none !important;}
+.main-content{margin:0 !important;width:100% !important;}
+.page-content{padding:0 !important;}
+.print-profile{
+padding:20px;
+}
+}
+
+@media(max-width:992px){
+.portal-charts-grid{
+grid-template-columns:1fr;
+}
+}
