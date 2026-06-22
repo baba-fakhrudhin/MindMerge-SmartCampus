@@ -53,6 +53,42 @@ if ($edit_mode && isset($_POST['save_profile'])) {
         $relationship = mysqli_real_escape_string($conn, $_POST['relationship_name'] ?? '');
         mysqli_query($conn, "UPDATE parents SET relationship_name='$relationship' WHERE user_id='$user_id'");
     }
+    
+    if ($role === 'driver' && !empty($data['role_data'])) {
+
+    $license_number = mysqli_real_escape_string(
+        $conn,
+        $_POST['license_number'] ?? ''
+    );
+
+    $emergency_contact = mysqli_real_escape_string(
+        $conn,
+        $_POST['emergency_contact'] ?? ''
+    );
+
+    $address = mysqli_real_escape_string(
+        $conn,
+        $_POST['address'] ?? ''
+    );
+
+    mysqli_query(
+
+        $conn,
+
+        "UPDATE transport_staff
+         SET
+         license_number='$license_number',
+         emergency_contact='$emergency_contact',
+         address='$address'
+         WHERE user_id='$user_id'
+         AND staff_type='driver'"
+
+    );
+    }
+    header('Location: index.php?updated=1');
+    exit();
+}
+
 
     $updated = mysqli_query($conn, "SELECT * FROM users WHERE id='$user_id'");
     $_SESSION['user'] = mysqli_fetch_assoc($updated);
@@ -60,9 +96,7 @@ if ($edit_mode && isset($_POST['save_profile'])) {
     $data = $profileService->getProfileData($user_id, $role);
     $photoUrl = $profileService->getPhotoUrl($data['user']);
 
-    header('Location: index.php?updated=1');
-    exit();
-}
+    
 
 ?>
 <!DOCTYPE html>
@@ -145,6 +179,43 @@ if ($edit_mode && isset($_POST['save_profile'])) {
 </div>
 <?php } ?>
 
+<?php if ($role === 'driver' && !empty($data['role_data'])) { ?>
+
+<div class="form-group">
+<label class="form-label">License Number</label>
+<input
+type="text"
+name="license_number"
+class="form-input"
+value="<?php echo htmlspecialchars($data['role_data']['license_number'] ?? ''); ?>">
+</div>
+
+<div class="form-group">
+<label class="form-label">Emergency Contact</label>
+<input
+type="text"
+name="emergency_contact"
+class="form-input"
+value="<?php echo htmlspecialchars($data['role_data']['emergency_contact'] ?? ''); ?>">
+</div>
+
+<div class="form-group">
+<label class="form-label">Address</label>
+<textarea
+name="address"
+class="form-textarea"><?php echo htmlspecialchars($data['role_data']['address'] ?? ''); ?></textarea>
+</div>
+
+<div class="form-group">
+<label class="form-label">Status</label>
+<input
+type="text"
+class="form-input disabled-field"
+value="<?php echo ucfirst($data['role_data']['status'] ?? ''); ?>"
+disabled>
+</div>
+
+<?php } ?>
 <?php if ($role === 'teacher' && !empty($data['role_data'])) { ?>
 <div class="form-group">
 <label class="form-label">Teacher ID</label>
@@ -209,7 +280,29 @@ if ($edit_mode && isset($_POST['save_profile'])) {
 <li><?php echo htmlspecialchars($child['full_name'] . ' (' . $child['student_id'] . ') — ' . ($child['class_name'] ?? '') . ' ' . ($child['section_name'] ?? '')); ?></li>
 <?php } ?></ul>
 <?php } ?>
+<?php if ($role === 'driver' && !empty($data['role_data'])) { ?>
 
+<p><strong>Staff Type:</strong>
+<?php echo ucfirst($data['role_data']['staff_type'] ?? '-'); ?>
+</p>
+
+<p><strong>License Number:</strong>
+<?php echo htmlspecialchars($data['role_data']['license_number'] ?? '-'); ?>
+</p>
+
+<p><strong>Emergency Contact:</strong>
+<?php echo htmlspecialchars($data['role_data']['emergency_contact'] ?? '-'); ?>
+</p>
+
+<p><strong>Address:</strong>
+<?php echo htmlspecialchars($data['role_data']['address'] ?? '-'); ?>
+</p>
+
+<p><strong>Status:</strong>
+<?php echo ucfirst($data['role_data']['status'] ?? '-'); ?>
+</p>
+
+<?php } ?>
 <?php if ($role === 'admin') { ?>
 <p><strong>Admin ID:</strong> <?php echo htmlspecialchars($user['admin_id'] ?? '-'); ?></p>
 <?php } ?>

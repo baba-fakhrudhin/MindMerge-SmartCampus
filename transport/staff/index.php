@@ -14,38 +14,44 @@ if(isset($_GET['search']) && trim($_GET['search']) != ''){
         trim($_GET['search'])
     );
 
-    $where = "WHERE
+    $where = "
 
-    full_name LIKE '%$search%'
+WHERE
 
-    OR
+ts.full_name LIKE '%$search%'
 
-    phone LIKE '%$search%'
+OR
 
-    OR
+ts.phone LIKE '%$search%'
 
-    license_number LIKE '%$search%'";
+OR
+
+ts.license_number LIKE '%$search%'
+
+";
 
 }
 
 $query = mysqli_query(
 
-    $conn,
+$conn,
 
-    "SELECT
+"SELECT
 
-    ts.*,
+ts.*,
 
-    u.email,
+u.email,
 
-    u.profile_photo
+u.profile_photo
 
-    FROM transport_staff ts
+FROM transport_staff ts
 
-    LEFT JOIN users u
-    ON ts.user_id=u.id
+LEFT JOIN users u
+ON ts.user_id = u.id
 
-    ORDER BY ts.staff_id DESC"
+$where
+
+ORDER BY ts.staff_id DESC"
 
 );
 
@@ -212,12 +218,6 @@ echo "Staff member deleted successfully.";
 echo "Driver created successfully. Default password: driver123";
 
 }
-if(isset($_GET['error']) && $_GET['error'] == 'in_use'){
-
-echo
-"Cannot delete staff because they are assigned to a bus.";
-
-}
 
 
 ?>
@@ -342,7 +342,17 @@ class="btn">
 
 <i class="fa-solid fa-route"></i>
 
-Routes
+Manage Routes
+
+</a>
+
+<a
+href="../student_assignments/index.php"
+class="btn">
+
+<i class="fa-solid fa-user-graduate"></i>
+
+Student Assignments
 
 </a>
 
@@ -494,7 +504,7 @@ echo $row['staff_id'];
 
 <?php
 echo htmlspecialchars(
-$row['full_name']
+$row['full_name'] ?? '-'
 );
 ?>
 
@@ -542,7 +552,7 @@ Helper
 
 <?php
 echo htmlspecialchars(
-$row['phone']
+$row['phone'] ?? '-'
 );
 ?>
 

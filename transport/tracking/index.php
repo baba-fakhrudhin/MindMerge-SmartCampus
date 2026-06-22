@@ -565,10 +565,28 @@ Loading...
 
 <script>
 
-const map = L.map('trackingMap').setView(
-    [13.6288,79.4192],
-    11
+let map = null;
+
+if(
+document.getElementById(
+'trackingMap'
+)
+){
+
+map = L.map('trackingMap')
+.setView(
+[13.6288,79.4192],
+11
 );
+
+L.tileLayer(
+'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+{
+maxZoom:19
+}
+).addTo(map);
+
+}
 
 L.tileLayer(
     'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
@@ -892,13 +910,18 @@ loadTrackingData,
 );
 
 <?php } else { ?>
-
+const tableBody =
 document.getElementById(
 'busTableBody'
-).innerHTML =
+);
 
-'<tr><td colspan="7" style="text-align:center;">No transport bus assigned.</td></tr>';
+if(tableBody){
 
+tableBody.innerHTML =
+html ||
+'<tr><td colspan="7" style="text-align:center;">No buses found.</td></tr>';
+
+}
 <?php } ?>
 
 </script>

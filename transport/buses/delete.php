@@ -4,73 +4,128 @@ include('../../config/auth.php');
 include('../../config/db.php');
 
 if(
-!isset($_GET['id'])
-||
-!is_numeric($_GET['id'])
+    !isset($_GET['id'])
+    ||
+    !is_numeric($_GET['id'])
 ){
 
-header('Location:index.php');
-exit;
+    header('Location:index.php');
+    exit;
 
 }
 
 $bus_id = (int)$_GET['id'];
 
 /*
-Check student assignments
+|--------------------------------------------------------------------------
+| Check Student Assignments
+|--------------------------------------------------------------------------
 */
 
 $student_check = mysqli_query(
 
-$conn,
+    $conn,
 
-"SELECT assignment_id
+    "SELECT assignment_id
 
-FROM transport_student_assignments
+     FROM transport_student_assignments
 
-WHERE bus_id = $bus_id
+     WHERE bus_id = $bus_id
 
-LIMIT 1"
+     LIMIT 1"
 
 );
 
 if(mysqli_num_rows($student_check) > 0){
 
-header(
-'Location:index.php?error=in_use'
-);
+    header(
+        'Location:index.php?error=in_use'
+    );
 
-exit;
+    exit;
 
 }
 
 /*
-Stops are ON DELETE CASCADE
-so they will remove automatically.
+|--------------------------------------------------------------------------
+| Check Route Assignment
+|--------------------------------------------------------------------------
+|
+| Prevent deleting bus if route exists.
+| Admin must delete route first.
+|
 */
-mysqli_query(
-$conn,
-"DELETE FROM transport_live_location
-WHERE bus_id=$bus_id"
-);
 
-mysqli_query(
-$conn,
-"DELETE FROM transport_bus_routes
-WHERE bus_id=$bus_id"
-);
-mysqli_query(
+$route_check = mysqli_query(
 
-$conn,
+    $conn,
 
-"DELETE FROM transport_buses
-WHERE bus_id = $bus_id"
+    "SELECT route_id
+
+     FROM transport_routes
+
+     WHERE bus_id = $bus_id
+
+     LIMIT 1"
 
 );
+
+if(mysqli_num_rows($route_check) > 0){
+
+    header(
+        'Location:index.php?error=route_exists'
+    );
+
+    exit;
+
+}
+
+/*
+|--------------------------------------------------------------------------
+| Remove Live Tracking Records
+|--------------------------------------------------------------------------
+*/
+
+mysqli_query(
+
+    $conn,
+
+    "DELETE FROM transport_live_location
+
+     WHERE bus_id = $bus_id"
+
+);
+
+/*
+|--------------------------------------------------------------------------
+| Delete Bus
+|--------------------------------------------------------------------------
+*/
+
+$delete = mysqli_query(
+
+    $conn,
+
+    "DELETE FROM transport_buses
+
+     WHERE bus_id = $bus_id"
+
+);
+
+if(!$delete){
+
+    header(
+        'Location:index.php?error=delete_failed'
+    );
+
+    exit;
+
+}
 
 header(
-'Location:index.php?success=deleted'
+    'Location:index.php?success=deleted'
 );
 
 exit;
+
 ?>

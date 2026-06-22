@@ -64,12 +64,8 @@ ON b.bus_id=tsa.bus_id
 LEFT JOIN transport_staff d
 ON d.staff_id=b.driver_id
 
-LEFT JOIN transport_bus_routes br
-ON br.bus_id=b.bus_id
-AND br.is_primary=1
-
 LEFT JOIN transport_routes r
-ON r.route_id=br.route_id
+ON r.bus_id=b.bus_id
 
 LEFT JOIN transport_live_location l
 ON l.bus_id=b.bus_id

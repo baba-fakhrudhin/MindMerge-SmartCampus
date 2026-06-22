@@ -5,38 +5,59 @@ include('../../config/db.php');
 
 $error = '';
 
+$id = (int)($_GET['id'] ?? 0);
+
+if($id <= 0){
+
+header('Location:index.php?error=not_found');
+exit;
+
+}
+
 /* =========================
-   Students (Not Assigned)
+   Assignment
 ========================= */
 
-$students = mysqli_query(
+$assignmentQuery = mysqli_query(
 
 $conn,
 
 "SELECT
 
-s.id,
-s.student_id,
+tsa.*,
 
-u.full_name
+u.full_name,
 
-FROM students s
+s.student_id AS student_code
+
+FROM transport_student_assignments tsa
+
+INNER JOIN students s
+ON tsa.student_id=s.id
 
 INNER JOIN users u
 ON s.user_id=u.id
 
-WHERE s.id NOT IN
-(
-SELECT student_id
-FROM transport_student_assignments
-)
+WHERE tsa.assignment_id='$id'
 
-ORDER BY u.full_name"
+LIMIT 1"
 
 );
 
+if(mysqli_num_rows($assignmentQuery) == 0){
+
+header('Location:index.php?error=not_found');
+exit;
+
+}
+
+$assignment =
+mysqli_fetch_assoc(
+$assignmentQuery
+);
+
 /* =========================
-   Active Buses
+   Buses
 ========================= */
 
 $buses = mysqli_query(
@@ -57,82 +78,6 @@ ORDER BY bus_name"
 
 );
 
-if($_SERVER['REQUEST_METHOD'] == 'POST'){
-
-$student_id = (int)($_POST['student_id'] ?? 0);
-
-$bus_id = (int)($_POST['bus_id'] ?? 0);
-
-$stop_id = (int)($_POST['stop_id'] ?? 0);
-
-if(
-$student_id <= 0
-||
-$bus_id <= 0
-||
-$stop_id <= 0
-){
-
-$error =
-'Please select Student, Bus and Stop.';
-
-}
-else{
-
-$check = mysqli_query(
-
-$conn,
-
-"SELECT assignment_id
-
-FROM transport_student_assignments
-
-WHERE student_id='$student_id'
-
-LIMIT 1"
-
-);
-
-if(mysqli_num_rows($check) > 0){
-
-$error =
-'Student already assigned to a bus.';
-
-}
-else{
-
-mysqli_query(
-
-$conn,
-
-"INSERT INTO transport_student_assignments
-(
-student_id,
-bus_id,
-stop_id
-)
-
-VALUES
-(
-'$student_id',
-'$bus_id',
-'$stop_id'
-)"
-
-);
-
-header(
-'Location:index.php?success=added'
-);
-
-exit;
-
-}
-
-}
-
-}
-
 ?>
 
 <!DOCTYPE html>
@@ -148,7 +93,7 @@ name="viewport"
 content="width=device-width, initial-scale=1.0">
 
 <title>
-Assign Student Transport
+Edit Student Assignment
 </title>
 
 <link
@@ -186,11 +131,11 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
 <div>
 
 <h1>
-Assign Student To Transport
+Edit Student Assignment
 </h1>
 
 <p>
-Assign a student to a bus and route stop.
+Modify bus and stop assignment.
 </p>
 
 </div>
@@ -216,7 +161,6 @@ color:#991b1b;
 padding:14px 18px;
 border-radius:14px;
 margin-bottom:20px;
-font-weight:500;
 ">
 
 <?php echo $error; ?>
@@ -227,7 +171,14 @@ font-weight:500;
 
 <div class="dashboard-section">
 
-<form method="POST">
+<form
+method="POST"
+action="update.php">
+
+<input
+type="hidden"
+name="assignment_id"
+value="<?php echo $id; ?>">
 
 <div class="form-grid">
 
@@ -237,47 +188,27 @@ font-weight:500;
 Student
 </label>
 
-<select
-name="student_id"
+<input
+
+type="text"
+
 class="form-input"
-required>
 
-<option value="">
-Select Student
-</option>
+readonly
 
-<?php
-while($student=mysqli_fetch_assoc($students)){
-?>
-
-<option
-value="<?php echo $student['id']; ?>">
-
-<?php
+value="<?php
 
 echo htmlspecialchars(
-$student['full_name']
+$assignment['full_name']
 );
 
-?>
-
-(
-
-<?php
+?> (<?php
 
 echo htmlspecialchars(
-$student['student_id']
+$assignment['student_code']
 );
 
-?>
-
-)
-
-</option>
-
-<?php } ?>
-
-</select>
+?>)">
 
 </div>
 
@@ -302,7 +233,18 @@ while($bus=mysqli_fetch_assoc($buses)){
 ?>
 
 <option
-value="<?php echo $bus['bus_id']; ?>">
+value="<?php echo $bus['bus_id']; ?>"
+
+<?php
+
+echo
+$assignment['bus_id']
+==
+$bus['bus_id']
+? 'selected'
+: '';
+
+?>>
 
 <?php
 
@@ -335,7 +277,7 @@ $bus['bus_number']
 <div class="form-group">
 
 <label>
-Route Stop
+Stop
 </label>
 
 <select
@@ -345,7 +287,7 @@ class="form-input"
 required>
 
 <option value="">
-Select Bus First
+Loading Stops...
 </option>
 
 </select>
@@ -367,7 +309,7 @@ class="btn btn-primary">
 
 <i class="fa-solid fa-floppy-disk"></i>
 
-Save Assignment
+Update Assignment
 
 </button>
 
@@ -393,15 +335,12 @@ Cancel
 
 <script>
 
-document
-.getElementById('bus_id')
-.addEventListener(
-'change',
-function(){
+const currentStopId =
+<?php echo (int)$assignment['stop_id']; ?>;
 
-let busId = this.value;
+function loadStops(busId, selectedStop = 0){
 
-let stopDropdown =
+const stopDropdown =
 document.getElementById(
 'stop_id'
 );
@@ -449,7 +388,19 @@ html +=
 
 stop.stop_id +
 
-'">' +
+'" ' +
+
+(
+parseInt(selectedStop)
+===
+parseInt(stop.stop_id)
+? 'selected'
+: ''
+)
+
++
+
+'>' +
 
 stop.stop_name +
 
@@ -478,6 +429,39 @@ stopDropdown.innerHTML =
 '<option value="">Failed To Load Stops</option>';
 
 });
+
+}
+
+document
+.getElementById('bus_id')
+.addEventListener(
+'change',
+function(){
+
+loadStops(
+this.value
+);
+
+}
+);
+
+/*
+Load Existing Stops
+*/
+
+window.addEventListener(
+'load',
+function(){
+
+loadStops(
+
+document.getElementById(
+'bus_id'
+).value,
+
+currentStopId
+
+);
 
 }
 );

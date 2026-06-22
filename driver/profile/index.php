@@ -33,12 +33,8 @@ ON u.id = ts.user_id
 LEFT JOIN transport_buses b
 ON b.driver_id = ts.staff_id
 
-LEFT JOIN transport_bus_routes br
-ON br.bus_id = b.bus_id
-AND br.is_primary = 1
-
 LEFT JOIN transport_routes r
-ON r.route_id = br.route_id
+ON r.bus_id=b.bus_id
 
 WHERE ts.user_id = $user_id
 

@@ -108,6 +108,23 @@ class ProfileService
                     }
                 }
                 break;
+                case 'driver':
+
+                $result = mysqli_query(
+
+                $this->conn,
+
+                "SELECT *
+                FROM transport_staff
+                WHERE user_id = '$user_id'
+                AND staff_type='driver'
+                LIMIT 1"
+
+                );
+
+                $roleData = mysqli_fetch_assoc($result);
+
+                break;
         }
 
         return $data;

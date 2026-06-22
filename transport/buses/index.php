@@ -239,7 +239,17 @@ font-weight:500;
 
 if($_GET['error']=='in_use'){
 
-echo "Cannot delete bus because routes or students are linked.";
+echo "This bus is assigned to students and cannot be deleted.";
+
+}
+elseif($_GET['error']=='route_exists'){
+
+echo "Delete the assigned route before deleting this bus.";
+
+}
+elseif($_GET['error']=='delete_failed'){
+
+echo "Unable to delete bus.";
 
 }
 
@@ -296,15 +306,12 @@ echo "Cannot delete bus because routes or students are linked.";
 </div>
 
 <!-- Quick Actions -->
+<!-- Quick Actions -->
 
 <div class="dashboard-section">
 
 <div class="section-header">
-
-<h2>
-Quick Actions
-</h2>
-
+<h2>Quick Actions</h2>
 </div>
 
 <div
@@ -325,6 +332,16 @@ Add Bus
 </a>
 
 <a
+href="../routes/index.php"
+class="btn">
+
+<i class="fa-solid fa-route"></i>
+
+Manage Routes
+
+</a>
+
+<a
 href="../staff/index.php"
 class="btn">
 
@@ -335,12 +352,12 @@ Transport Staff
 </a>
 
 <a
-href="../routes/index.php"
+href="../student_assignments/index.php"
 class="btn">
 
-<i class="fa-solid fa-route"></i>
+<i class="fa-solid fa-user-graduate"></i>
 
-Routes
+Student Assignments
 
 </a>
 
@@ -350,7 +367,7 @@ class="btn">
 
 <i class="fa-solid fa-location-dot"></i>
 
-Tracking
+Live Tracking
 
 </a>
 
@@ -503,21 +520,19 @@ while($row=mysqli_fetch_assoc($query)){
 
 <?php
 
-echo date(
-'h:i A',
-strtotime($row['start_time'])
-);
+echo !empty($row['start_time'])
+? date('h:i A', strtotime($row['start_time']))
+: '-';
 
 ?>
 
-*
+-
 
 <?php
 
-echo date(
-'h:i A',
-strtotime($row['end_time'])
-);
+echo !empty($row['end_time'])
+? date('h:i A', strtotime($row['end_time']))
+: '-';
 
 ?>
 

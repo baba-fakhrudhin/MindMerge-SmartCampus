@@ -102,6 +102,7 @@ function register_selected(string $key, string $value): string
 <title>Register | MindMerge SmartCampus</title>
 <link rel="stylesheet" href="../assets/css/global.css">
 <link rel="stylesheet" href="../assets/css/components.css">
+<link rel="stylesheet" href="../assets/css/auth.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
 <body class="auth-v2">
@@ -109,12 +110,30 @@ function register_selected(string $key, string $value): string
 <section class="auth-register-card">
 <header class="auth-register-header">
 <a href="../index.php" class="auth-brand">
-<span class="auth-brand-mark"><i class="fa-solid fa-brain"></i></span>
+<span class="auth-brand-mark"><i class="fa-solid fa-graduation-cap"></i></span>
 <span><strong>MindMerge</strong><small>SmartCampus</small></span>
 </a>
+
+<div class="auth-steps">
+<div class="auth-step is-active">
+<span class="auth-step-num">1</span>
+<span>Details</span>
+</div>
+<span class="auth-step-line"></span>
+<div class="auth-step">
+<span class="auth-step-num">2</span>
+<span>Verify Email</span>
+</div>
+<span class="auth-step-line"></span>
+<div class="auth-step">
+<span class="auth-step-num">3</span>
+<span>Done</span>
+</div>
+</div>
+
 <div>
-<h1>Create account</h1>
-<p>Enter your details. We will verify your email before creating the account.</p>
+<h1>Create Account</h1>
+<p>Join MindMerge SmartCampus today.</p>
 </div>
 </header>
 
@@ -131,16 +150,16 @@ function register_selected(string $key, string $value): string
 <label for="fullName">Full name</label>
 <div class="auth-input-wrap">
 <i class="fa-solid fa-user"></i>
-<input id="fullName" type="text" name="full_name" value="<?php echo register_value('full_name'); ?>" placeholder="Your full name" autocomplete="name" required>
+<input id="fullName" type="text" name="full_name" value="<?php echo register_value('full_name'); ?>" placeholder="Enter your full name" autocomplete="name" required>
 </div>
 </div>
 
 <div class="auth-field">
-<label for="roleSelect">Role</label>
+<label for="roleSelect">Select Role</label>
 <div class="auth-input-wrap">
 <i class="fa-solid fa-id-badge"></i>
 <select id="roleSelect" name="role" required>
-<option value="">Select role</option>
+<option value="">— Choose your role —</option>
 <option value="teacher" <?php echo register_selected('role', 'teacher'); ?>>Teacher</option>
 <option value="student" <?php echo register_selected('role', 'student'); ?>>Student</option>
 <option value="parent" <?php echo register_selected('role', 'parent'); ?>>Parent</option>
@@ -152,7 +171,7 @@ function register_selected(string $key, string $value): string
 <label for="email">Email address</label>
 <div class="auth-input-wrap">
 <i class="fa-solid fa-at"></i>
-<input id="email" type="email" name="email" value="<?php echo register_value('email'); ?>" placeholder="you@school.edu" autocomplete="email" required>
+<input id="email" type="email" name="email" value="<?php echo register_value('email'); ?>" placeholder="your@email.com" autocomplete="email" required>
 </div>
 </div>
 
@@ -160,7 +179,7 @@ function register_selected(string $key, string $value): string
 <label for="phone">Phone number</label>
 <div class="auth-input-wrap">
 <i class="fa-solid fa-phone"></i>
-<input id="phone" type="tel" name="phone" value="<?php echo register_value('phone'); ?>" placeholder="Phone number" autocomplete="tel" required>
+<input id="phone" type="tel" name="phone" value="<?php echo register_value('phone'); ?>" placeholder="+91 98765 43210" autocomplete="tel" required>
 </div>
 </div>
 
@@ -265,26 +284,28 @@ function register_selected(string $key, string $value): string
 
 <div class="auth-form-section">
 <div class="auth-section-title"><span id="securityStep">2</span><div><h2>Security</h2><p>Create a password for your account.</p></div></div>
-<div class="auth-register-grid">
-<div class="auth-field">
+<div class="auth-field auth-field-full">
 <label for="password">Password</label>
 <div class="auth-input-wrap">
 <i class="fa-solid fa-key"></i>
-<input id="password" type="password" name="password" placeholder="At least 8 characters" autocomplete="new-password" required>
+<input id="password" type="password" name="password" placeholder="Create a strong password" autocomplete="new-password" required>
 <button type="button" class="auth-eye" data-password-toggle="password" aria-label="Show password"><i class="fa-solid fa-eye"></i></button>
 </div>
-<div class="auth-password-meter"><span id="passwordMeter"></span></div>
-<small class="auth-field-help" id="passwordHelp">Use 8 or more characters.</small>
+<ul class="auth-password-rules" id="passwordRules">
+<li data-rule="length"><i class="fa-solid fa-circle"></i> At least 8 characters</li>
+<li data-rule="upper"><i class="fa-solid fa-circle"></i> At least one uppercase letter (A–Z)</li>
+<li data-rule="number"><i class="fa-solid fa-circle"></i> At least one number (0–9)</li>
+<li data-rule="symbol"><i class="fa-solid fa-circle"></i> At least one symbol (!@#$...)</li>
+</ul>
 </div>
-<div class="auth-field">
+<div class="auth-field auth-field-full">
 <label for="confirmPassword">Confirm password</label>
 <div class="auth-input-wrap">
 <i class="fa-solid fa-lock"></i>
-<input id="confirmPassword" type="password" name="confirm_password" placeholder="Repeat your password" autocomplete="new-password" required>
+<input id="confirmPassword" type="password" name="confirm_password" placeholder="Re-enter your password" autocomplete="new-password" required>
 <button type="button" class="auth-eye" data-password-toggle="confirmPassword" aria-label="Show password"><i class="fa-solid fa-eye"></i></button>
 </div>
 <small class="auth-field-help" id="confirmHelp"></small>
-</div>
 </div>
 </div>
 
@@ -336,18 +357,23 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function updatePasswordState() {
         const value = password.value;
-        const meter = document.getElementById('passwordMeter');
-        const help = document.getElementById('passwordHelp');
-        let score = 0;
-        if (value.length >= 8) score++;
-        if (/[A-Z]/.test(value)) score++;
-        if (/[0-9]/.test(value)) score++;
-        if (/[^A-Za-z0-9]/.test(value)) score++;
+        const rules = {
+            length: value.length >= 8,
+            upper: /[A-Z]/.test(value),
+            number: /[0-9]/.test(value),
+            symbol: /[^A-Za-z0-9]/.test(value)
+        };
 
-        meter.style.width = value ? (score * 25) + '%' : '0';
-        meter.dataset.score = score;
-        help.textContent = value.length >= 8 ? 'Password length is valid.' : 'Use 8 or more characters.';
-        help.className = 'auth-field-help ' + (value.length >= 8 ? 'valid' : '');
+        Object.keys(rules).forEach(function (key) {
+            const item = document.querySelector('#passwordRules [data-rule="' + key + '"]');
+            if (!item) return;
+            item.classList.toggle('valid', rules[key]);
+            const icon = item.querySelector('i');
+            if (icon) {
+                icon.className = rules[key] ? 'fa-solid fa-circle-check' : 'fa-solid fa-circle';
+            }
+        });
+
         updatePasswordMatch();
     }
 

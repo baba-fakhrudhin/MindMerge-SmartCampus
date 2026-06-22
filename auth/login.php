@@ -46,14 +46,16 @@ $logged_out = isset($_GET['logout']);
 <div class="auth-card">
 
 <div class="auth-logo">
-<i class="fa-solid fa-brain"></i>
+<i class="fa-solid fa-graduation-cap"></i>
+<div>
 <h1>MindMerge</h1>
-<p>SmartCampus ERP</p>
+<p>SmartCampus</p>
+</div>
 </div>
 
 <div class="auth-heading">
-<h2>Welcome Back 👋</h2>
-<p>Login to continue</p>
+<h2>Sign in</h2>
+<p>Welcome back — enter your credentials to continue.</p>
 </div>
 
 <?php if ($logged_out) { ?>
@@ -121,9 +123,14 @@ data-password-toggle="password"
 </div>
 </div>
 
-<div class="auth-meta">
+<div class="auth-checkbox-row">
+<label class="auth-checkbox">
+<input type="checkbox" name="remember" value="1">
+<span>Remember me</span>
+</label>
 <a href="forgot-password.php">
-Forgot Password?
+<i class="fa-solid fa-rotate-left"></i>
+Forgot password?
 </a>
 </div>
 
@@ -135,7 +142,7 @@ Sign In
 </form>
 
 <div class="auth-divider">
-<span>OR</span>
+<span>New to MindMerge?</span>
 </div>
 
 <a href="register.php" class="auth-secondary-btn">

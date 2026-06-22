@@ -249,6 +249,15 @@ if($_GET['error']=='not_found'){
 
 echo "Route not found.";
 
+}elseif($_GET['error']=='in_use'){
+
+    echo "Students are assigned to this route.";
+
+}
+elseif($_GET['error']=='delete_failed'){
+
+    echo "Unable to delete route.";
+
 }
 
 ?>
@@ -337,7 +346,6 @@ display:flex;
 gap:12px;
 flex-wrap:wrap;
 ">
-
 <a
 href="add.php"
 class="btn btn-primary">
@@ -347,7 +355,6 @@ class="btn btn-primary">
 Add Route
 
 </a>
-
 <a
 href="../buses/index.php"
 class="btn">
@@ -365,6 +372,16 @@ class="btn">
 <i class="fa-solid fa-users"></i>
 
 Transport Staff
+
+</a>
+
+<a
+href="../student_assignments/index.php"
+class="btn">
+
+<i class="fa-solid fa-user-graduate"></i>
+
+Student Assignments
 
 </a>
 
@@ -516,7 +533,7 @@ $row['route_name']
 <?php
 
 echo htmlspecialchars(
-$row['bus_name']
+$row['bus_name'] ?? 'No Bus Assigned'
 );
 
 ?>
@@ -528,7 +545,7 @@ $row['bus_name']
 <?php
 
 echo htmlspecialchars(
-$row['bus_number']
+$row['bus_number'] ?? '-'
 );
 
 ?>
@@ -553,13 +570,15 @@ Stops
 
 <?php
 
-echo !empty($row['start_time'])
-
-? date(
-'h:i A',
-strtotime($row['start_time'])
+echo (
+    !empty($row['start_time'])
+    &&
+    $row['start_time'] != '00:00:00'
 )
-
+? date(
+    'h:i A',
+    strtotime($row['start_time'])
+)
 : '-';
 
 ?>
@@ -570,13 +589,15 @@ strtotime($row['start_time'])
 
 <?php
 
-echo !empty($row['end_time'])
-
-? date(
-'h:i A',
-strtotime($row['end_time'])
+echo (
+    !empty($row['end_time'])
+    &&
+    $row['end_time'] != '00:00:00'
 )
-
+? date(
+    'h:i A',
+    strtotime($row['end_time'])
+)
 : '-';
 
 ?>
