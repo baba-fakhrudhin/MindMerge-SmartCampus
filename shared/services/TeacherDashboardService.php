@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/TeacherScopeService.php';
+require_once __DIR__ . '/../../config/notifications.php';
 
 class TeacherDashboardService
 {
@@ -21,13 +22,9 @@ class TeacherDashboardService
         $completed = $this->getCompletedAttendanceCount($pairs);
 
         $uid = (int) ($_SESSION['user']['id'] ?? 0);
-        $unread = $this->scalar(
-            "SELECT COUNT(DISTINCT n.id)
-             FROM notifications n
-             LEFT JOIN notification_reads nr
-               ON nr.notification_id = n.id AND nr.user_id = '$uid'
-             WHERE nr.read_id IS NULL"
-        );
+        $role = $_SESSION['user']['role'] ?? 'teacher';
+        $context = notification_user_context($this->conn, $uid, $role);
+        $unread = notification_unread_count($this->conn, $context);
 
         return [
             'today_classes'       => $today_classes,

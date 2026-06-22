@@ -12,8 +12,24 @@ $error = '';
 $grouped_permissions = permission_fetch_all_grouped($conn);
 $role_matrix = permission_fetch_role_matrix($conn);
 
-$selected_role = strtolower(trim($_GET['role'] ?? 'teacher'));
-if (!in_array($selected_role, ['teacher', 'student', 'parent'], true)) {
+$available_roles = [
+    'teacher',
+    'student',
+    'parent',
+    'driver'
+];
+
+$selected_role =
+strtolower(
+trim($_GET['role'] ?? $available_roles[0])
+);
+if (
+    !in_array(
+        $selected_role,
+        ['teacher', 'student', 'parent', 'driver'],
+        true
+    )
+){
     $selected_role = 'teacher';
 }
 
@@ -53,6 +69,29 @@ if (isset($_GET['saved'])) {
 <link rel="stylesheet" href="../../assets/css/layout.css">
 <link rel="stylesheet" href="../../assets/css/components.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+.perm-role-picker{
+display:flex;
+gap:12px;
+flex-wrap:wrap;
+margin-bottom:20px;
+}
+
+.perm-role-btn{
+padding:12px 20px;
+border-radius:12px;
+background:#f8fafc;
+font-weight:600;
+text-decoration:none;
+border:1px solid #e5e7eb;
+}
+
+.perm-role-btn.active{
+background:var(--primary);
+color:#fff;
+border-color:var(--primary);
+}
+</style>
 </head>
 <body>
 
@@ -109,7 +148,15 @@ User Overrides
 </div>
 
 <div class="perm-role-picker">
-<?php foreach (['teacher' => 'Teacher', 'student' => 'Student', 'parent' => 'Parent'] as $role_key => $role_label) { ?>
+<?php foreach (
+[
+'teacher' => 'Teacher',
+'student' => 'Student',
+'parent'  => 'Parent',
+'driver'  => 'Driver'
+]
+as $role_key => $role_label
+) { ?>
 <a href="?tab=roles&role=<?php echo urlencode($role_key); ?>"
    class="perm-role-btn <?php echo $selected_role === $role_key ? 'active' : ''; ?>">
 <?php echo htmlspecialchars($role_label); ?>

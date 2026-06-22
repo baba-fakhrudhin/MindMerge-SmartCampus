@@ -1,22 +1,31 @@
 <?php
 
+require_once __DIR__ . '/../../config/notifications.php';
+
 class ParentDashboardService
 {
     private mysqli $conn;
     private ?array $parent = null;
+    private array $parentLinks = [];
     private array $children = [];
 
     public function __construct(mysqli $conn, int $user_id)
     {
         $this->conn = $conn;
-        $this->parent = mysqli_fetch_assoc(mysqli_query(
+        $query = mysqli_query(
             $conn,
             "SELECT p.*, u.full_name, u.email, u.phone, u.profile_photo
              FROM parents p
              INNER JOIN users u ON u.id = p.user_id
              WHERE p.user_id = '$user_id'
-             LIMIT 1"
-        ));
+             ORDER BY p.id ASC"
+        );
+
+        while ($query && $row = mysqli_fetch_assoc($query)) {
+            $this->parentLinks[] = $row;
+        }
+
+        $this->parent = $this->parentLinks[0] ?? null;
 
         $this->loadChildren();
     }
@@ -29,6 +38,11 @@ class ParentDashboardService
     public function getChildren(): array
     {
         return $this->children;
+    }
+
+    public function getParentLinks(): array
+    {
+        return $this->parentLinks;
     }
 
     public function getStats(): array
@@ -56,13 +70,9 @@ class ParentDashboardService
         }
 
         $uid = (int) ($_SESSION['user']['id'] ?? 0);
-        $unread = $this->scalar(
-            "SELECT COUNT(DISTINCT n.id)
-             FROM notifications n
-             LEFT JOIN notification_reads nr
-               ON nr.notification_id = n.id AND nr.user_id = '$uid'
-             WHERE nr.read_id IS NULL"
-        );
+        $role = $_SESSION['user']['role'] ?? 'parent';
+        $context = notification_user_context($this->conn, $uid, $role);
+        $unread = notification_unread_count($this->conn, $context);
 
         return [
             'children_count'       => $count,
@@ -162,18 +172,23 @@ class ParentDashboardService
 
     private function loadChildren(): void
     {
-        if (!$this->parent) {
+        if (empty($this->parentLinks)) {
             return;
         }
 
-        $student_code = mysqli_real_escape_string(
-            $this->conn,
-            $this->parent['student_id'] ?? ''
-        );
+        $student_codes = [];
 
-        if ($student_code === '') {
+        foreach ($this->parentLinks as $link) {
+            if (!empty($link['student_id'])) {
+                $student_codes[] = "'" . mysqli_real_escape_string($this->conn, $link['student_id']) . "'";
+            }
+        }
+
+        if (empty($student_codes)) {
             return;
         }
+
+        $student_list = implode(',', array_unique($student_codes));
 
         $query = mysqli_query(
             $this->conn,
@@ -183,7 +198,8 @@ class ParentDashboardService
              INNER JOIN users u ON u.id = st.user_id
              INNER JOIN classes c ON c.class_id = st.class_id
              INNER JOIN sections s ON s.section_id = st.section_id
-             WHERE st.student_id = '$student_code'"
+             WHERE st.student_id IN ($student_list)
+             ORDER BY u.full_name ASC"
         );
 
         while ($row = mysqli_fetch_assoc($query)) {

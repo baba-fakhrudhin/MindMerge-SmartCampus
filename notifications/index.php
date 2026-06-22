@@ -109,6 +109,12 @@ $can_create = canCreate('notifications');
 Create Notification
 </a>
 <?php } ?>
+<?php if (canView('notifications')) { ?>
+<a href="reports.php" class="btn">
+<i class="fa-solid fa-chart-column"></i>
+Reports
+</a>
+<?php } ?>
 
 </div>
 
@@ -215,6 +221,12 @@ Reset
 <p>Send a new campus announcement.</p>
 </a>
 <?php } ?>
+
+<a href="reports.php" class="action-card">
+<i class="fa-solid fa-chart-column"></i>
+<h3>Reports</h3>
+<p>View delivery and read-rate analytics.</p>
+</a>
 
 <a href="index.php" class="action-card">
 <i class="fa-solid fa-arrows-rotate"></i>

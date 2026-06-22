@@ -193,6 +193,29 @@ $overall_attendance_rate = round(
 
 }
 
+    $today_present = mysqli_fetch_assoc(
+
+        mysqli_query(
+
+            $conn,
+
+            "SELECT COUNT(*) total
+
+            FROM attendance_records ar
+
+            JOIN attendance a
+            ON ar.attendance_id=a.attendance_id
+
+            WHERE
+
+            a.attendance_date=CURDATE()
+
+            AND ar.status != 'absent'"
+
+        )
+
+    )['total'];
+
     $today_total = mysqli_fetch_assoc(
 
         mysqli_query(
@@ -344,7 +367,7 @@ $overall_attendance_rate = round(
     <a href="mark.php" class="hub-card">
     <i class="fa-solid fa-user-graduate"></i>
     <h3>Student Attendance</h3>
-    <p>Mark and manage daily student attendance sessions.</p>
+    <p>Mark and manage period-wise student attendance sessions.</p>
     </a>
 
     <?php if (canView('teacher_attendance')) { ?>
@@ -599,90 +622,6 @@ $overall_attendance_rate = round(
     </div>
 
     <?php } ?>
-
-
-
-    <div class="dashboard-section">
-
-        <div class="section-header">
-
-            <h2>
-                Quick Actions
-            </h2>
-
-        </div>
-
-        <div class="quick-actions">
-
-            <a
-                href="mark.php"
-                class="action-card"
-            >
-
-                <i class="fa-solid fa-clipboard-check"></i>
-
-                <h3>
-                    Student Attendance
-                </h3>
-
-                <p>
-                    Record attendance for students.
-                </p>
-
-            </a>
-            <a
-    href="teacher/index.php"
-    class="action-card"
-    >
-
-    <i class="fa-solid fa-chalkboard-user"></i>
-
-    <h3>
-    Teacher Attendance
-    </h3>
-
-    <p>
-    Manage faculty attendance records.
-    </p>
-
-    </a>
-            <a
-                href="report.php"
-                class="action-card"
-            >
-
-                <i class="fa-solid fa-chart-column"></i>
-
-                <h3>
-                    Reports
-                </h3>
-
-                <p>
-                    Attendance analytics and summaries.
-                </p>
-
-            </a>
-
-            <a
-                href="report.php?date_from=<?php echo date('Y-m-d'); ?>&date_to=<?php echo date('Y-m-d'); ?>"
-                class="action-card"
-            >
-
-                <i class="fa-solid fa-calendar-day"></i>
-
-                <h3>
-                    Today's Attendance
-                </h3>
-
-                <p>
-                    Attendance marked today.
-                </p>
-
-            </a>
-
-        </div>
-
-    </div>
 
     <div
     class="dashboard-section"

@@ -22,7 +22,16 @@ border:1px solid rgba(148,163,184,.15);
 transform:translateY(-4px);
 }
 
+.field-error{
+    color:#ef4444;
+    font-size:12px;
+    margin-top:4px;
+    display:block;
+}
 
+input:invalid{
+    border-color:#ef4444;
+}
 .btn{
 border:none;
 padding:11px 18px;
@@ -1002,4 +1011,135 @@ flex-direction:column;
 flex-direction:column;
 }
 
+}
+
+/* ========================================
+   TIMETABLE GRID (shared)
+======================================== */
+
+.timetable-grid-wrap{
+overflow-x:auto;
+}
+
+.timetable-table{
+width:100%;
+min-width:960px;
+border-collapse:collapse;
+background:var(--card);
+}
+
+.timetable-table th,
+.timetable-table td{
+border:1px solid rgba(148,163,184,.15);
+padding:10px;
+vertical-align:top;
+text-align:center;
+}
+
+.timetable-table th{
+background:#f8fafc;
+font-weight:600;
+}
+
+body.dark-mode .timetable-table th{
+background:#081028;
+}
+
+.period-cell{
+background:#f8fafc;
+font-weight:600;
+min-width:130px;
+text-align:left;
+}
+
+body.dark-mode .period-cell{
+background:#081028;
+}
+
+.period-time{
+font-size:12px;
+margin-top:6px;
+color:var(--muted);
+}
+
+.subject-box{
+padding:10px;
+border-radius:12px;
+border:1px solid #bfdbfe;
+min-height:72px;
+display:flex;
+flex-direction:column;
+justify-content:center;
+gap:4px;
+text-align:left;
+}
+
+body.dark-mode .subject-box{
+background:#0f172a !important;
+border-color:#29476d !important;
+}
+
+.subject-title{
+font-weight:700;
+display:flex;
+align-items:center;
+gap:6px;
+flex-wrap:wrap;
+}
+
+.lab-badge{
+font-size:10px;
+font-weight:700;
+padding:2px 8px;
+border-radius:999px;
+background:rgba(124,58,237,.15);
+color:#7c3aed;
+text-transform:uppercase;
+letter-spacing:.04em;
+}
+
+.teacher-name{
+font-size:12px;
+color:var(--muted);
+}
+
+.room-name{
+font-size:12px;
+font-weight:600;
+}
+
+.empty-box{
+padding:10px;
+border-radius:12px;
+background:#f8fafc;
+min-height:72px;
+display:flex;
+align-items:center;
+justify-content:center;
+color:#94a3b8;
+}
+
+body.dark-mode .empty-box{
+background:#111827;
+}
+
+.timetable-block{
+padding:12px;
+border-radius:12px;
+border:1px solid transparent;
+min-height:72px;
+display:flex;
+align-items:center;
+justify-content:center;
+font-weight:700;
+}
+
+.timetable-block.non-teaching{
+background:#f3f4f6;
+color:#6b7280;
+}
+
+body.dark-mode .timetable-block.non-teaching{
+background:#111827;
+color:#9ca3af;
 }

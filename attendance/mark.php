@@ -2,8 +2,12 @@
 
     include('../config/auth.php');
     include('../config/db.php');
+    require_once __DIR__ . '/../shared/services/TeacherScopeService.php';
 
     $created_by = intval($_SESSION['user']['id']);
+    $user_role = strtolower($_SESSION['user']['role'] ?? '');
+    $is_teacher = $user_role === 'teacher';
+    $teacher_scope = $is_teacher ? new TeacherScopeService($conn, $created_by) : null;
     $error = '';
     $today = date('Y-m-d');
 
@@ -91,6 +95,12 @@ $error =
             }
         }
 
+        if ($error === '' && $is_teacher && $teacher_scope) {
+            if (!$teacher_scope->canAccessClassSection($class_id, $section_id)) {
+                $error = 'You are not assigned to the selected class and section.';
+            }
+        }
+
         if ($error === '') {
 
             $period_condition = 'period_id IS NULL';
@@ -135,6 +145,22 @@ $error =
                     'No timetable exists for the selected day and period.';
 
                     }
+
+                if (
+                    $error === '' &&
+                    $is_teacher &&
+                    $teacher_scope &&
+                    !$teacher_scope->canMarkPeriodAttendance(
+                        $class_id,
+                        $section_id,
+                        $period_id,
+                        $attendance_day,
+                        $teacher_assignment_id
+                    )
+                ) {
+                    $error = 'You are not authorized to mark attendance for this period.';
+                }
+
                 $period_condition = "period_id='$period_id'";
             }
 
@@ -302,13 +328,28 @@ $error =
         }
     }
 
-    $class_query = mysqli_query(
-        $conn,
-        "SELECT *
-        FROM classes
-        WHERE status='active'
-        ORDER BY class_name ASC"
-    );
+    if ($is_teacher && $teacher_scope) {
+        $pairs = $teacher_scope->getAssignedClassSectionPairs();
+        $class_ids = array_unique(array_column($pairs, 'class_id'));
+
+        if (empty($class_ids)) {
+            $class_query = false;
+        } else {
+            $ids = implode(',', array_map('intval', $class_ids));
+            $class_query = mysqli_query(
+                $conn,
+                "SELECT * FROM classes WHERE status='active' AND class_id IN ($ids) ORDER BY class_name ASC"
+            );
+        }
+    } else {
+        $class_query = mysqli_query(
+            $conn,
+            "SELECT *
+            FROM classes
+            WHERE status='active'
+            ORDER BY class_name ASC"
+        );
+    }
 
     $period_query = mysqli_query(
         $conn,

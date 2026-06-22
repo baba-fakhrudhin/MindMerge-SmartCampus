@@ -19,10 +19,7 @@ function sidebar_resolve_url(array $config, string $role, string $module_key = '
     }
 
     if ($module_key === 'profile' || ($config['label'] ?? '') === 'Profile') {
-        if ($role === 'admin') {
-            return BASE_URL . 'profile/index.php';
-        }
-        return BASE_URL . $role . '/profile/index.php';
+        return BASE_URL . 'profile/index.php';
     }
 
     return BASE_URL . ($config['url'] ?? '#');

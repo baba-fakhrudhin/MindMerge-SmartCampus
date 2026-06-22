@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__ . '/../../config/notifications.php';
+
 class AdminDashboardService
 {
     private mysqli $conn;
@@ -31,14 +33,9 @@ class AdminDashboardService
             ? round(($teacher_present / $teacher_total) * 100, 1)
             : 0;
 
-        $unread = $this->scalar(
-    "SELECT COUNT(DISTINCT n.id)
-     FROM notifications n
-     LEFT JOIN notification_reads nr
-       ON nr.notification_id = n.id
-      AND nr.user_id = " . (int) ($_SESSION['user']['id'] ?? 0) . "
-     WHERE nr.read_id IS NULL"
-);
+        $uid = (int) ($_SESSION['user']['id'] ?? 0);
+        $context = notification_user_context($this->conn, $uid, 'admin');
+        $unread = notification_unread_count($this->conn, $context);
 
         return [
             'total_students'         => $total_students,
@@ -48,7 +45,7 @@ class AdminDashboardService
             'attendance_rate'        => $student_rate,
             'teacher_attendance_rate'=> $teacher_rate,
             'unread_notifications'   => $unread,
-            'upcoming_exams'         => 0,
+            'upcoming_exams'         => $this->upcomingExamCount(),
         ];
     }
 
@@ -239,6 +236,27 @@ class AdminDashboardService
         $total   = $this->scalar("SELECT COUNT(*) FROM attendance_records");
 
         return $total > 0 ? round(($present / $total) * 100, 1) : 0;
+    }
+
+    private function upcomingExamCount(): int
+    {
+        if (!$this->tableHasColumn('exams', 'exam_date')) {
+            return 0;
+        }
+
+        return $this->scalar(
+            "SELECT COUNT(*) FROM exams
+             WHERE status = 'active' AND exam_date >= CURDATE()"
+        );
+    }
+
+    private function tableHasColumn(string $table, string $column): bool
+    {
+        $table = mysqli_real_escape_string($this->conn, $table);
+        $column = mysqli_real_escape_string($this->conn, $column);
+        $result = mysqli_query($this->conn, "SHOW COLUMNS FROM `$table` LIKE '$column'");
+
+        return $result && mysqli_num_rows($result) > 0;
     }
 
     private function scalar(string $sql): int

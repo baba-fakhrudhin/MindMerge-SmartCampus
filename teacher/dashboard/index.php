@@ -105,6 +105,8 @@ $user_name = portal_greeting_name();
 <?php if (canCreate('attendance')) { ?><a href="../attendance/index.php" class="action-card" style="text-decoration:none;color:inherit;"><i class="fa-solid fa-clipboard-check"></i><h3>Take Attendance</h3></a><?php } ?>
 <?php if (canView('timetables')) { ?><a href="../timetable/index.php" class="action-card" style="text-decoration:none;color:inherit;"><i class="fa-solid fa-calendar-days"></i><h3>View Timetable</h3></a><?php } ?>
 <?php if (canView('students')) { ?><a href="../students/index.php" class="action-card" style="text-decoration:none;color:inherit;"><i class="fa-solid fa-user-graduate"></i><h3>View Students</h3></a><?php } ?>
+<?php if (canView('exams')) { ?><a href="../../exams/index.php" class="action-card" style="text-decoration:none;color:inherit;"><i class="fa-solid fa-file-lines"></i><h3>View Exams</h3></a><?php } ?>
+<?php if (canView('results')) { ?><a href="../results/index.php" class="action-card" style="text-decoration:none;color:inherit;"><i class="fa-solid fa-square-poll-vertical"></i><h3>View Results</h3></a><?php } ?>
 </div>
 </div>
 

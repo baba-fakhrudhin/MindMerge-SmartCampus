@@ -158,7 +158,7 @@ font-size:14px;
 
 </head>
 
-<body>
+<body class="auth-v2">
 
 <div class="auth-page">
 

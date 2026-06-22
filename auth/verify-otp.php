@@ -331,9 +331,6 @@ INSERT INTO teachers(
 
 user_id,
 teacher_id,
-class_id,
-section_id,
-subject_name,
 qualification
 
 )
@@ -342,9 +339,6 @@ VALUES(
 
 '$user_id',
 '$teacher_id',
-'".$data['teacher_class_id']."',
-'".$data['teacher_section_id']."',
-'".mysqli_real_escape_string($conn, $data['subject_name'] ?? '')."',
 '".mysqli_real_escape_string($conn, $data['qualification'] ?? '')."'
 
 )
@@ -521,7 +515,7 @@ font-weight:600;
 
 </head>
 
-<body>
+<body class="auth-v2">
 
 <div class="auth-page">
 

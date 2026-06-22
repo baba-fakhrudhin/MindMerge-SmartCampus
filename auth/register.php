@@ -2,882 +2,372 @@
 
 session_start();
 
-include('../config/db.php');
-include('../config/mail.php');
+require_once __DIR__ . '/../config/db.php';
+require_once __DIR__ . '/../config/mail.php';
+require_once __DIR__ . '/../shared/helpers/portal.php';
 
-if(isset($_SESSION['user'])){
-
-header("Location: ../dashboard/index.php");
-exit();
-
+if (isset($_SESSION['user'])) {
+    portal_redirect_home();
 }
 
-$error = "";
+$error = '';
+$classes = [];
+$sections = [];
 
-/* LOAD CLASSES */
-
-$classQuery = mysqli_query(
-
-$conn,
-
-"SELECT *
-FROM classes
-WHERE status='active'
-ORDER BY class_name ASC"
-
+$class_query = mysqli_query(
+    $conn,
+    "SELECT class_id, class_name
+     FROM classes
+     WHERE status = 'active'
+     ORDER BY class_name ASC"
 );
 
-/* LOAD SECTIONS */
-
-$sectionQuery = mysqli_query(
-
-$conn,
-
-"SELECT
-sections.*,
-classes.class_name
-
-FROM sections
-
-INNER JOIN classes
-ON classes.class_id =
-sections.class_id
-
-WHERE sections.status='active'
-
-ORDER BY
-classes.class_name,
-sections.section_name"
-
-);
-
-if(isset($_POST['send_otp'])){
-
-$otp =
-rand(100000,999999);
-
-$_SESSION['register_data'] =
-$_POST;
-
-$_SESSION['register_otp'] =
-$otp;
-
-$email =
-$_POST['email'];
-
-$message = "
-
-<h2>MindMerge OTP Verification</h2>
-
-<p>
-Your OTP code is:
-</p>
-
-<h1>$otp</h1>
-
-<p>
-Do not share this OTP.
-</p>
-
-";
-
-if(
-sendMail(
-$email,
-"MindMerge OTP Verification",
-$message
-)
-){
-
-header(
-"Location: verify-otp.php"
-);
-
-exit();
-
-}else{
-
-$error =
-"Failed to send OTP";
-
+while ($class_query && $row = mysqli_fetch_assoc($class_query)) {
+    $classes[] = $row;
 }
 
+$section_query = mysqli_query(
+    $conn,
+    "SELECT s.section_id, s.class_id, s.section_code, s.section_name, c.class_name
+     FROM sections s
+     INNER JOIN classes c ON c.class_id = s.class_id
+     WHERE s.status = 'active'
+     ORDER BY c.class_name, s.section_name"
+);
+
+while ($section_query && $row = mysqli_fetch_assoc($section_query)) {
+    $sections[] = $row;
 }
 
+if (isset($_POST['send_otp'])) {
+    $role = strtolower(trim($_POST['role'] ?? ''));
+    $email = trim($_POST['email'] ?? '');
+    $password = $_POST['password'] ?? '';
+    $confirm_password = $_POST['confirm_password'] ?? '';
+
+    if (!in_array($role, ['teacher', 'student', 'parent'], true)) {
+        $error = 'Please select a valid role.';
+    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $error = 'Please enter a valid email address.';
+    } elseif (strlen($password) < 8) {
+        $error = 'Password must contain at least 8 characters.';
+    } elseif ($password !== $confirm_password) {
+        $error = 'Passwords do not match.';
+    } else {
+        $email_escaped = mysqli_real_escape_string($conn, $email);
+        $existing = mysqli_query(
+            $conn,
+            "SELECT id FROM users WHERE email = '$email_escaped' LIMIT 1"
+        );
+
+        if ($existing && mysqli_num_rows($existing) > 0) {
+            $error = 'An account already exists with this email.';
+        } else {
+            $otp = random_int(100000, 999999);
+            $_SESSION['register_data'] = $_POST;
+            $_SESSION['register_otp'] = $otp;
+
+            $message = "
+                <h2>MindMerge OTP Verification</h2>
+                <p>Your verification code is:</p>
+                <h1>$otp</h1>
+                <p>Do not share this code.</p>
+            ";
+
+            if (sendMail($email, 'MindMerge OTP Verification', $message)) {
+                header('Location: verify-otp.php');
+                exit();
+            }
+
+            $error = 'Unable to send the verification code. Please try again.';
+        }
+    }
+}
+
+function register_value(string $key): string
+{
+    return htmlspecialchars($_POST[$key] ?? '');
+}
+
+function register_selected(string $key, string $value): string
+{
+    return (($_POST[$key] ?? '') === $value) ? 'selected' : '';
+}
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-
 <meta charset="UTF-8">
-
-<meta
-name="viewport"
-content="width=device-width, initial-scale=1.0">
-
-<title>Register | MindMerge</title>
-
-<link
-rel="stylesheet"
-href="../assets/css/global.css">
-
-<link
-rel="stylesheet"
-href="../assets/css/components.css">
-
-<link
-rel="stylesheet"
-href="../assets/css/layout.css">
-
-<link
-rel="stylesheet"
-href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-
-<style>
-
-.auth-page{
-min-height:100vh;
-display:flex;
-justify-content:center;
-align-items:center;
-padding:20px;
-background:
-linear-gradient(
-135deg,
-#081028,
-#172554
-);
-}
-
-.auth-container{
-width:100%;
-max-width:1180px;
-background:white;
-border-radius:26px;
-overflow:hidden;
-display:grid;
-grid-template-columns:1fr 1.2fr;
-box-shadow:
-0 20px 60px rgba(0,0,0,0.25);
-}
-
-.auth-left{
-
-background-color:#172554;
-
-background-image:
-linear-gradient(
-rgba(0,0,0,0.5),
-rgba(0,0,0,0.5)
-),
-url('../assets/images/classroom.jpg');
-
-background-size:cover;
-background-position:center;
-
-padding:50px;
-
-display:flex;
-justify-content:center;
-align-items:center;
-flex-direction:column;
-
-text-align:center;
-color:white;
-
-}
-
-.auth-left i{
-font-size:70px;
-margin-bottom:20px;
-}
-
-.auth-left h1{
-font-size:44px;
-margin-bottom:16px;
-}
-
-.auth-left p{
-color:#dbeafe;
-line-height:1.8;
-}
-
-.auth-right{
-padding:36px;
-max-height:100vh;
-overflow-y:auto;
-}
-
-.auth-header{
-margin-bottom:24px;
-}
-
-.role-section{
-display:none;
-margin-top:20px;
-padding-top:10px;
-}
-
-.info-box{
-background:#dbeafe;
-color:#1e3a8a;
-padding:14px;
-border-radius:12px;
-margin-bottom:20px;
-font-size:14px;
-}
-
-.error-box{
-background:#fee2e2;
-color:#991b1b;
-padding:14px;
-border-radius:12px;
-margin-bottom:20px;
-font-size:14px;
-}
-
-@media(max-width:900px){
-
-.auth-container{
-grid-template-columns:1fr;
-}
-
-.auth-left{
-display:none;
-}
-
-}
-
-</style>
-
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Register | MindMerge SmartCampus</title>
+<link rel="stylesheet" href="../assets/css/global.css">
+<link rel="stylesheet" href="../assets/css/components.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
-
-<body>
-
-<div class="auth-page">
-
-<div class="auth-container">
-
-<div class="auth-left">
-
-<i class="fa-solid fa-school"></i>
-
-<h1>MindMerge SmartCampus</h1>
-
-<p>
-Create your account
-and access the complete
-school ERP platform.
-</p>
-
-</div>
-
-<div class="auth-right">
-
-<div class="auth-header">
-
-<h1>Create Account</h1>
-
-<p>
-Register to continue
-</p>
-
-</div>
-
-<?php if($error != ""){ ?>
-
-<div class="error-box">
-
-<?php echo $error; ?>
-
-</div>
-
-<?php } ?>
-
-<div class="info-box">
-
-<i class="fa-solid fa-circle-info"></i>
-
-&nbsp;
-
-User IDs are generated automatically
-after OTP verification.
-
-</div>
-
-<form method="POST">
-
-<div class="form-grid">
-
-<div class="form-group">
-
-<label class="form-label">
-Full Name
-</label>
-
-<input
-type="text"
-name="full_name"
-class="form-input"
-required>
-
-</div>
-
-<div class="form-group">
-
-<label class="form-label">
-Role
-</label>
-
-<select
-name="role"
-class="form-select"
-id="roleSelect"
-required>
-
-<option value="">
-Select Role
-</option>
-
-<option value="teacher">
-Teacher
-</option>
-
-<option value="student">
-Student
-</option>
-
-<option value="parent">
-Parent
-</option>
-
-</select>
-
-</div>
-
-<div class="form-group">
-
-<label class="form-label">
-Email
-</label>
-
-<input
-type="email"
-name="email"
-class="form-input"
-required>
-
-</div>
-
-<div class="form-group">
-
-<label class="form-label">
-Phone Number
-</label>
-
-<input
-type="text"
-name="phone"
-class="form-input"
-required>
-
-</div>
-
-</div>
-
-<!-- ADMIN -->
-
-<div
-class="role-section"
-id="adminFields">
-
-<div class="form-group">
-
-<label class="form-label">
-Admin ID
-</label>
-
-<input
-type="text"
-class="form-input"
-value="Generated Automatically"
-disabled>
-
-</div>
-
-</div>
-
-<!-- STUDENT -->
-
-<div
-class="role-section"
-id="studentFields">
-
-<div class="form-grid">
-
-<div class="form-group">
-
-<label class="form-label">
-Student ID
-</label>
-
-<input
-type="text"
-class="form-input"
-value="Generated Automatically"
-disabled>
-
-</div>
-
-<div class="form-group">
-
-<label class="form-label">
-Class
-</label>
-
-<select
-name="class_id"
-class="form-select">
-
-<option value="">
-Select Class
-</option>
-
-<?php
-
-mysqli_data_seek(
-$classQuery,
-0
-);
-
-while(
-$class =
-mysqli_fetch_assoc(
-$classQuery
-)
-){
-
-?>
-
-<option
-value="<?php echo $class['class_id']; ?>">
-
-<?php
-echo $class['class_name'];
-?>
-
-</option>
-
-<?php } ?>
-
-</select>
-
-</div>
-
-<div class="form-group">
-
-<label class="form-label">
-Section
-</label>
-
-<select
-name="section_id"
-class="form-select">
-
-<option value="">
-Select Section
-</option>
-
-<?php
-
-mysqli_data_seek(
-$sectionQuery,
-0
-);
-
-while(
-$section =
-mysqli_fetch_assoc(
-$sectionQuery
-)
-){
-
-?>
-
-<option
-value="<?php echo $section['section_id']; ?>">
-
-<?php
-echo
-$section['section_code']
-.
-' - '
-.
-$section['section_name'];
-?>
-
-</option>
-
-<?php } ?>
-
-</select>
-
-</div>
-
-<div class="form-group">
-
-<label class="form-label">
-DOB
-</label>
-
-<input
-type="date"
-name="dob"
-class="form-input">
-
-</div>
-
-<div class="form-group">
-
-<label class="form-label">
-Gender
-</label>
-
-<select
-name="gender"
-class="form-select">
-
-<option value="">
-Select Gender
-</option>
-
-<option value="Male">
-Male
-</option>
-
-<option value="Female">
-Female
-</option>
-
-</select>
-
-</div>
-
-<div class="form-group">
-
-<label class="form-label">
-Parent Phone
-</label>
-
-<input
-type="text"
-name="parent_phone"
-class="form-input">
-
-</div>
-
-</div>
-
-<div class="form-group">
-
-<label class="form-label">
-Address
-</label>
-
-<textarea
-name="address"
-class="form-textarea"></textarea>
-
-</div>
-
-</div>
-<!-- TEACHER -->
-
-<div
-class="role-section"
-id="teacherFields">
-
-<div class="form-grid">
-
-<div class="form-group">
-
-<label class="form-label">
-Teacher ID
-</label>
-
-<input
-type="text"
-class="form-input"
-value="Generated Automatically"
-disabled>
-
-</div>
-
-<div class="form-group">
-
-<label class="form-label">
-Assigned Class
-</label>
-
-<select
-name="teacher_class_id"
-class="form-select">
-
-<option value="">
-Select Class
-</option>
-
-<?php
-
-mysqli_data_seek(
-$classQuery,
-0
-);
-
-while(
-$class =
-mysqli_fetch_assoc(
-$classQuery
-)
-){
-
-?>
-
-<option
-value="<?php echo $class['class_id']; ?>">
-
-<?php
-echo $class['class_name'];
-?>
-
-</option>
-
-<?php } ?>
-
-</select>
-
-</div>
-
-<div class="form-group">
-
-<label class="form-label">
-Assigned Section
-</label>
-
-<select
-name="teacher_section_id"
-class="form-select">
-
-<option value="">
-Select Section
-</option>
-
-<?php
-
-mysqli_data_seek(
-$sectionQuery,
-0
-);
-
-while(
-$section =
-mysqli_fetch_assoc(
-$sectionQuery
-)
-){
-
-?>
-
-<option
-value="<?php echo $section['section_id']; ?>">
-
-<?php
-echo
-$section['section_code']
-.
-' - '
-.
-$section['section_name'];
-?>
-
-</option>
-
-<?php } ?>
-
-</select>
-
-</div>
-
-<div class="form-group">
-
-<label class="form-label">
-Subject
-</label>
-
-<input
-type="text"
-name="subject_name"
-class="form-input">
-
-</div>
-
-<div class="form-group">
-
-<label class="form-label">
-Qualification
-</label>
-
-<input
-type="text"
-name="qualification"
-class="form-input">
-
-</div>
-
-</div>
-
-</div>
-
-<!-- PARENT -->
-
-<div
-class="role-section"
-id="parentFields">
-
-<div class="form-grid">
-
-<div class="form-group">
-
-<label class="form-label">
-Parent ID
-</label>
-
-<input
-type="text"
-class="form-input"
-value="Generated Automatically"
-disabled>
-
-</div>
-
-<div class="form-group">
-
-<label class="form-label">
-Student ID
-</label>
-
-<input
-type="text"
-name="student_id"
-class="form-input">
-
-</div>
-
-<div class="form-group">
-
-<label class="form-label">
-Relationship
-</label>
-
-<input
-type="text"
-name="relationship_name"
-class="form-input"
-placeholder="Father / Mother / Guardian">
-
-</div>
-
-</div>
-
-</div>
-
-<div class="form-group"
-style="margin-top:20px;">
-
-<label class="form-label">
-Password
-</label>
-
-<input
-type="password"
-name="password"
-class="form-input"
-required>
-
-</div>
-
-<button
-type="submit"
-name="send_otp"
-class="btn btn-primary"
-style="width:100%;margin-top:10px;">
-
-<i class="fa-solid fa-envelope"></i>
-
-Send OTP
-
-</button>
-
-<p
-style="margin-top:18px;text-align:center;">
-
-Already have an account?
-
-<a href="login.php">
-Login
+<body class="auth-v2">
+<main class="auth-register-shell">
+<section class="auth-register-card">
+<header class="auth-register-header">
+<a href="../index.php" class="auth-brand">
+<span class="auth-brand-mark"><i class="fa-solid fa-brain"></i></span>
+<span><strong>MindMerge</strong><small>SmartCampus</small></span>
 </a>
+<div>
+<h1>Create account</h1>
+<p>Enter your details. We will verify your email before creating the account.</p>
+</div>
+</header>
 
-</p>
+<?php if ($error !== '') { ?>
+<div class="auth-alert error"><i class="fa-solid fa-triangle-exclamation"></i><span><?php echo htmlspecialchars($error); ?></span></div>
+<?php } ?>
 
+<form method="POST" class="auth-register-form" id="registerForm">
+<div class="auth-form-section">
+<div class="auth-section-title"><span>1</span><div><h2>Account details</h2><p>Basic information used to sign in.</p></div></div>
+<div class="auth-register-grid">
+
+<div class="auth-field">
+<label for="fullName">Full name</label>
+<div class="auth-input-wrap">
+<i class="fa-solid fa-user"></i>
+<input id="fullName" type="text" name="full_name" value="<?php echo register_value('full_name'); ?>" placeholder="Your full name" autocomplete="name" required>
+</div>
+</div>
+
+<div class="auth-field">
+<label for="roleSelect">Role</label>
+<div class="auth-input-wrap">
+<i class="fa-solid fa-id-badge"></i>
+<select id="roleSelect" name="role" required>
+<option value="">Select role</option>
+<option value="teacher" <?php echo register_selected('role', 'teacher'); ?>>Teacher</option>
+<option value="student" <?php echo register_selected('role', 'student'); ?>>Student</option>
+<option value="parent" <?php echo register_selected('role', 'parent'); ?>>Parent</option>
+</select>
+</div>
+</div>
+
+<div class="auth-field">
+<label for="email">Email address</label>
+<div class="auth-input-wrap">
+<i class="fa-solid fa-at"></i>
+<input id="email" type="email" name="email" value="<?php echo register_value('email'); ?>" placeholder="you@school.edu" autocomplete="email" required>
+</div>
+</div>
+
+<div class="auth-field">
+<label for="phone">Phone number</label>
+<div class="auth-input-wrap">
+<i class="fa-solid fa-phone"></i>
+<input id="phone" type="tel" name="phone" value="<?php echo register_value('phone'); ?>" placeholder="Phone number" autocomplete="tel" required>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="auth-form-section auth-role-section" id="studentFields">
+<div class="auth-section-title"><span>2</span><div><h2>Student details</h2><p>Class and personal information.</p></div></div>
+<div class="auth-register-grid">
+<div class="auth-field">
+<label for="studentClass">Class</label>
+<div class="auth-input-wrap">
+<i class="fa-solid fa-school"></i>
+<select id="studentClass" name="class_id">
+<option value="">Select class</option>
+<?php foreach ($classes as $class) { ?>
+<option value="<?php echo (int) $class['class_id']; ?>" <?php echo register_selected('class_id', (string) $class['class_id']); ?>><?php echo htmlspecialchars($class['class_name']); ?></option>
+<?php } ?>
+</select>
+</div>
+</div>
+<div class="auth-field">
+<label for="studentSection">Section</label>
+<div class="auth-input-wrap">
+<i class="fa-solid fa-layer-group"></i>
+<select id="studentSection" name="section_id">
+<option value="">Select section</option>
+<?php foreach ($sections as $section) { ?>
+<option data-class="<?php echo (int) $section['class_id']; ?>" value="<?php echo (int) $section['section_id']; ?>" <?php echo register_selected('section_id', (string) $section['section_id']); ?>><?php echo htmlspecialchars($section['section_code'] . ' - ' . $section['section_name']); ?></option>
+<?php } ?>
+</select>
+</div>
+</div>
+<div class="auth-field">
+<label for="dob">Date of birth</label>
+<div class="auth-input-wrap">
+<i class="fa-solid fa-cake-candles"></i>
+<input id="dob" type="date" name="dob" value="<?php echo register_value('dob'); ?>">
+</div>
+</div>
+<div class="auth-field">
+<label for="gender">Gender</label>
+<div class="auth-input-wrap">
+<i class="fa-solid fa-venus-mars"></i>
+<select id="gender" name="gender">
+<option value="">Select gender</option>
+<option value="Male" <?php echo register_selected('gender', 'Male'); ?>>Male</option>
+<option value="Female" <?php echo register_selected('gender', 'Female'); ?>>Female</option>
+<option value="Other" <?php echo register_selected('gender', 'Other'); ?>>Other</option>
+</select>
+</div>
+</div>
+<div class="auth-field">
+<label for="parentPhone">Parent phone</label>
+<div class="auth-input-wrap">
+<i class="fa-solid fa-phone-volume"></i>
+<input id="parentPhone" type="tel" name="parent_phone" value="<?php echo register_value('parent_phone'); ?>" placeholder="Parent or guardian phone">
+</div>
+</div>
+<div class="auth-field auth-field-wide">
+<label for="address">Address</label>
+<div class="auth-input-wrap">
+<i class="fa-solid fa-location-dot"></i>
+<textarea id="address" name="address" placeholder="Home address"><?php echo register_value('address'); ?></textarea>
+</div>
+</div>
+</div>
+</div>
+
+<div class="auth-form-section auth-role-section" id="teacherFields">
+<div class="auth-section-title"><span>2</span><div><h2>Teacher details</h2><p>Academic assignment information.</p></div></div>
+<div class="auth-register-grid">
+<div class="auth-field auth-field-wide">
+<label for="qualification">Qualification</label>
+<div class="auth-input-wrap">
+<i class="fa-solid fa-graduation-cap"></i>
+<input id="qualification" type="text" name="qualification" value="<?php echo register_value('qualification'); ?>" placeholder="Highest qualification">
+</div>
+</div>
+</div>
+</div>
+
+<div class="auth-form-section auth-role-section" id="parentFields">
+<div class="auth-section-title"><span>2</span><div><h2>Parent details</h2><p>Connect this account to a student.</p></div></div>
+<div class="auth-register-grid">
+<div class="auth-field">
+<label for="studentId">Student ID</label>
+<div class="auth-input-wrap">
+<i class="fa-solid fa-user-graduate"></i>
+<input id="studentId" type="text" name="student_id" value="<?php echo register_value('student_id'); ?>" placeholder="Student ID">
+</div>
+</div>
+<div class="auth-field">
+<label for="relationship">Relationship</label>
+<div class="auth-input-wrap">
+<i class="fa-solid fa-people-roof"></i>
+<input id="relationship" type="text" name="relationship_name" value="<?php echo register_value('relationship_name'); ?>" placeholder="Father, mother, or guardian">
+</div>
+</div>
+</div>
+</div>
+
+<div class="auth-form-section">
+<div class="auth-section-title"><span id="securityStep">2</span><div><h2>Security</h2><p>Create a password for your account.</p></div></div>
+<div class="auth-register-grid">
+<div class="auth-field">
+<label for="password">Password</label>
+<div class="auth-input-wrap">
+<i class="fa-solid fa-key"></i>
+<input id="password" type="password" name="password" placeholder="At least 8 characters" autocomplete="new-password" required>
+<button type="button" class="auth-eye" data-password-toggle="password" aria-label="Show password"><i class="fa-solid fa-eye"></i></button>
+</div>
+<div class="auth-password-meter"><span id="passwordMeter"></span></div>
+<small class="auth-field-help" id="passwordHelp">Use 8 or more characters.</small>
+</div>
+<div class="auth-field">
+<label for="confirmPassword">Confirm password</label>
+<div class="auth-input-wrap">
+<i class="fa-solid fa-lock"></i>
+<input id="confirmPassword" type="password" name="confirm_password" placeholder="Repeat your password" autocomplete="new-password" required>
+<button type="button" class="auth-eye" data-password-toggle="confirmPassword" aria-label="Show password"><i class="fa-solid fa-eye"></i></button>
+</div>
+<small class="auth-field-help" id="confirmHelp"></small>
+</div>
+</div>
+</div>
+
+<div class="auth-register-actions">
+<button type="submit" name="send_otp" class="auth-primary-btn"><i class="fa-solid fa-paper-plane"></i> Send Verification Code</button>
+<p>Already registered? <a href="login.php">Sign in</a></p>
+</div>
 </form>
+</section>
+</main>
 
-</div>
-
-</div>
-
-</div>
-
+<script src="../assets/js/auth.js"></script>
 <script>
+document.addEventListener('DOMContentLoaded', function () {
+    const roleSelect = document.getElementById('roleSelect');
+    const roleSections = document.querySelectorAll('.auth-role-section');
+    const securityStep = document.getElementById('securityStep');
+    const password = document.getElementById('password');
+    const confirmPassword = document.getElementById('confirmPassword');
 
-const roleSelect =
-document.getElementById('roleSelect');
+    function updateRoleFields() {
+        roleSections.forEach(section => section.classList.remove('active'));
+        const target = document.getElementById(roleSelect.value + 'Fields');
+        if (target) {
+            target.classList.add('active');
+            securityStep.textContent = '3';
+        } else {
+            securityStep.textContent = '2';
+        }
+    }
 
-const adminFields =
-document.getElementById('adminFields');
+    function filterSections(classSelectId, sectionSelectId) {
+        const classSelect = document.getElementById(classSelectId);
+        const sectionSelect = document.getElementById(sectionSelectId);
+        if (!classSelect || !sectionSelect) return;
 
-const studentFields =
-document.getElementById('studentFields');
+        const apply = function () {
+            const selectedClass = classSelect.value;
+            Array.from(sectionSelect.options).forEach((option, index) => {
+                if (index === 0) return;
+                option.hidden = selectedClass !== '' && option.dataset.class !== selectedClass;
+                if (option.hidden && option.selected) sectionSelect.value = '';
+            });
+        };
 
-const teacherFields =
-document.getElementById('teacherFields');
+        classSelect.addEventListener('change', apply);
+        apply();
+    }
 
-const parentFields =
-document.getElementById('parentFields');
+    function updatePasswordState() {
+        const value = password.value;
+        const meter = document.getElementById('passwordMeter');
+        const help = document.getElementById('passwordHelp');
+        let score = 0;
+        if (value.length >= 8) score++;
+        if (/[A-Z]/.test(value)) score++;
+        if (/[0-9]/.test(value)) score++;
+        if (/[^A-Za-z0-9]/.test(value)) score++;
 
-roleSelect.addEventListener('change',()=>{
+        meter.style.width = value ? (score * 25) + '%' : '0';
+        meter.dataset.score = score;
+        help.textContent = value.length >= 8 ? 'Password length is valid.' : 'Use 8 or more characters.';
+        help.className = 'auth-field-help ' + (value.length >= 8 ? 'valid' : '');
+        updatePasswordMatch();
+    }
 
-adminFields.style.display = 'none';
-studentFields.style.display = 'none';
-teacherFields.style.display = 'none';
-parentFields.style.display = 'none';
+    function updatePasswordMatch() {
+        const help = document.getElementById('confirmHelp');
+        if (!confirmPassword.value) {
+            help.textContent = '';
+            return;
+        }
+        const matches = confirmPassword.value === password.value;
+        help.textContent = matches ? 'Passwords match.' : 'Passwords do not match.';
+        help.className = 'auth-field-help ' + (matches ? 'valid' : 'invalid');
+    }
 
-if(roleSelect.value === 'student'){
-studentFields.style.display = 'block';
-}
-
-if(roleSelect.value === 'teacher'){
-teacherFields.style.display = 'block';
-}
-
-if(roleSelect.value === 'parent'){
-parentFields.style.display = 'block';
-}
-
+    roleSelect.addEventListener('change', updateRoleFields);
+    password.addEventListener('input', updatePasswordState);
+    confirmPassword.addEventListener('input', updatePasswordMatch);
+    filterSections('studentClass', 'studentSection');
+    updateRoleFields();
 });
-
 </script>
-
 </body>
 </html>

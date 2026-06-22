@@ -15,7 +15,7 @@ if (!defined('PERMISSION_ACTIONS')) {
 }
 
 if (!defined('PERMISSION_ROLES')) {
-    define('PERMISSION_ROLES', ['admin', 'teacher', 'student', 'parent']);
+    define('PERMISSION_ROLES', ['admin', 'teacher', 'student', 'parent','driver']);
 }
 
 
@@ -88,7 +88,6 @@ function permission_module_registry(): array
             'url'    => 'attendance/index.php',
             'action' => 'view',
             'match'  => '/attendance/',
-            'exclude_match' => '/attendance/teacher/',
         ],
         'teacher_student_attendance' => [
             'label'      => 'Student Attendance',
@@ -96,14 +95,14 @@ function permission_module_registry(): array
             'url'        => 'teacher/attendance/index.php',
             'action'     => 'view',
             'permission' => 'attendance',
-            'match'      => '/teacher/attendance/',
+            'match'      => '/teacher/attendance/|/attendance/mark|/attendance/edit|/attendance/view|/attendance/delete|/attendance/report|/attendance/get_|/attendance/check_',
         ],
         'teacher_my_attendance' => [
             'label'      => 'My Attendance',
             'icon'       => 'fa-user-check',
             'url'        => 'teacher/my-attendance/index.php',
             'action'     => 'view',
-            'permission' => 'teacher_attendance',
+            'permission' => 'my_teacher_attendance',
             'match'      => '/teacher/my-attendance/',
         ],
         'teacher_students' => [
@@ -129,6 +128,14 @@ function permission_module_registry(): array
             'action'     => 'view',
             'permission' => 'attendance',
             'match'      => '/teacher/reports/',
+        ],
+        'teacher_results' => [
+            'label'      => 'Results',
+            'icon'       => 'fa-square-poll-vertical',
+            'url'        => 'teacher/results/index.php',
+            'action'     => 'view',
+            'permission' => 'results',
+            'match'      => '/teacher/results/',
         ],
         'student_attendance' => [
             'label'      => 'Attendance',
@@ -221,6 +228,23 @@ function permission_module_registry(): array
             'url'    => 'settings/permissions/index.php',
             'action' => 'view',
             'match'  => '/settings/permissions/',
+        ],
+        'driver_tracking' => [
+            'label'      => 'My Bus',
+            'icon'       => 'fa-location-dot',
+            'url'        => 'transport/tracking/index.php',
+            'action'     => 'view',
+            'permission' => 'transport',
+            'match'      => '/transport/tracking/',
+        ],
+
+        'driver_notifications' => [
+            'label'      => 'Notifications',
+            'icon'       => 'fa-bell',
+            'url'        => 'notifications/index.php',
+            'action'     => 'view',
+            'permission' => 'notifications',
+            'match'      => '/notifications/',
         ],
     ];
 }
@@ -383,7 +407,7 @@ function permission_portal_menu_groups(): array
             ['label' => 'General', 'items' => ['profile', 'dashboard']],
             ['label' => 'Academics', 'items' => ['teacher_students']],
             ['label' => 'Scheduling', 'items' => ['teacher_timetable']],
-            ['label' => 'Operations', 'items' => ['teacher_student_attendance', 'teacher_my_attendance', 'notifications', 'results', 'exams', 'teacher_reports']],
+            ['label' => 'Operations', 'items' => ['teacher_student_attendance', 'teacher_my_attendance', 'notifications', 'teacher_results', 'exams', 'transport']],
         ],
         'student' => [
             ['label' => 'General', 'items' => ['profile', 'dashboard']],
@@ -395,13 +419,38 @@ function permission_portal_menu_groups(): array
         'parent' => [
             ['label' => 'General', 'items' => ['profile', 'dashboard']],
             ['label' => 'Academics', 'items' => ['parent_children', 'parent_results']],
-            ['label' => 'Operations', 'items' => ['parent_attendance', 'notifications', 'transport']],
-        ],
+            ['label' => 'Operations', 'items' => ['parent_attendance', 'notifications', 'exams', 'transport']],
+        ],'driver' => [
+
+                [
+                    'label' => 'General',
+                    'items' => [
+                        'profile',
+                        'dashboard'
+                    ]
+                ],
+
+                [
+                    'label' => 'Transport',
+                    'items' => [
+                        'driver_tracking'
+                    ]
+                ],
+
+                [
+                    'label' => 'Communication',
+                    'items' => [
+                        'driver_notifications'
+                    ]
+                ]
+
+            ],
     ];
 
     $registry = permission_module_registry();
     $groups   = $menus[$role] ?? $menus['admin'];
     $visible  = [];
+    $represented_permissions = [];
 
     foreach ($groups as $group) {
         $items = [];
@@ -413,6 +462,7 @@ function permission_portal_menu_groups(): array
 
             $config = $registry[$module_key];
             $perm   = $config['permission'] ?? $module_key;
+            $represented_permissions[$perm] = true;
 
             if (!empty($config['always']) || canView($perm)) {
                 $items[$module_key] = $config;
@@ -423,6 +473,48 @@ function permission_portal_menu_groups(): array
             $visible[] = [
                 'label' => $group['label'],
                 'items' => $items,
+            ];
+        }
+    }
+
+    /*
+     * Role menus provide the best portal-specific destination first. If an
+     * administrator grants an additional root module, expose it rather than
+     * leaving authorization active but navigation invisible.
+     */
+    if ($role !== 'admin') {
+        $additional = [];
+        $canonical_modules = [
+            'classes',
+            'sections',
+            'students',
+            'teachers',
+            'schedules',
+            'timetables',
+            'attendance',
+            'notifications',
+            'results',
+            'exams',
+            'transport',
+            'permissions',
+        ];
+
+        foreach ($canonical_modules as $module_key) {
+            if (
+                !isset($registry[$module_key])
+                || isset($represented_permissions[$module_key])
+                || !canView($module_key)
+            ) {
+                continue;
+            }
+
+            $additional[$module_key] = $registry[$module_key];
+        }
+
+        if (!empty($additional)) {
+            $visible[] = [
+                'label' => 'Additional Access',
+                'items' => $additional,
             ];
         }
     }
@@ -463,9 +555,59 @@ function permission_role_dashboard_url(): string
         'teacher' => 'teacher/dashboard/index.php',
         'student' => 'student/dashboard/index.php',
         'parent'  => 'parent/dashboard/index.php',
+        'driver'  => 'driver/dashboard/index.php'
     ];
 
     return BASE_URL . ($paths[$role] ?? $paths['admin']);
+}
+
+
+/**
+ * Path groups used to keep parent sidebar items active on sub-pages.
+ */
+function permission_menu_path_groups(): array
+{
+    return [
+        'attendance' => [
+            '#/attendance/#',
+        ],
+        'teacher_student_attendance' => [
+            '#/teacher/attendance/#',
+            '#/attendance/mark#',
+            '#/attendance/edit#',
+            '#/attendance/view#',
+            '#/attendance/delete#',
+            '#/attendance/report#',
+            '#/attendance/get_#',
+            '#/attendance/check_#',
+        ],
+        'teacher_my_attendance' => [
+            '#/teacher/my-attendance/#',
+        ],
+        'student_attendance' => [
+            '#/student/attendance/#',
+        ],
+        'parent_attendance' => [
+            '#/parent/attendance/#',
+        ],
+        'notifications' => [
+            '#/notifications/#',
+        ],
+        'results' => [
+            '#/results/#',
+            '#/student/results/#',
+            '#/parent/results/#',
+        ],
+        'timetables' => [
+            '#/timetables/#',
+        ],
+        'teacher_timetable' => [
+            '#/teacher/timetable/#',
+        ],
+        'student_timetable' => [
+            '#/student/timetable/#',
+        ],
+    ];
 }
 
 
@@ -475,16 +617,16 @@ function permission_role_dashboard_url(): string
 function permission_menu_is_active(array $config, string $current_page, string $uri, string $module_key = ''): bool
 {
     $path = strtolower(parse_url($uri, PHP_URL_PATH) ?? $uri);
+    $groups = permission_menu_path_groups();
 
-    if (
-        in_array($module_key, ['attendance', 'teacher_student_attendance', 'teacher_my_attendance', 'teacher_reports', 'student_attendance', 'parent_attendance'], true)
-        && preg_match('#/(attendance|teacher/attendance|teacher/my-attendance|teacher/reports|student/attendance|parent/attendance)/#', $path)
-    ) {
-        return true;
-    }
+    if ($module_key !== '' && isset($groups[$module_key])) {
+        foreach ($groups[$module_key] as $pattern) {
+            if (preg_match($pattern, $path)) {
+                return true;
+            }
+        }
 
-    if ($current_page !== 'index.php' && !empty($config['match'])) {
-        // non-index pages: rely on match pattern only
+        return false;
     }
 
     if (!empty($config['match']) && preg_match('#' . $config['match'] . '#', $uri)) {
@@ -546,30 +688,31 @@ function permission_resolve_route(string $uri, string $script): ?array
 
         ['pattern' => '#/teacher/students/#',            'module' => 'students', 'action' => 'view'],
         ['pattern' => '#/teacher/attendance/#',          'module' => 'attendance', 'action' => 'view'],
-        ['pattern' => '#/teacher/my-attendance/#',      'module' => 'teacher_attendance', 'action' => 'view'],
+        ['pattern' => '#/teacher/my-attendance/#',      'module' => 'my_teacher_attendance', 'action' => 'view'],
         ['pattern' => '#/teacher/timetable/#',           'module' => 'timetables', 'action' => 'view'],
         ['pattern' => '#/teacher/reports/#',             'module' => 'attendance', 'action' => 'view'],
-        ['pattern' => '#/teacher/profile/print#',       'module' => 'profile', 'action' => 'view'],
-        ['pattern' => '#/teacher/profile/#',             'module' => 'profile', 'action' => 'view'],
+        ['pattern' => '#/teacher/profile/print#',       'module' => 'profile', 'action' => 'view', 'redirect' => 'profile/print.php'],
+        ['pattern' => '#/teacher/profile/#',             'module' => 'profile', 'action' => 'view', 'redirect' => 'profile/index.php'],
 
         ['pattern' => '#/student/attendance/#',          'module' => 'attendance', 'action' => 'view'],
         ['pattern' => '#/student/timetable/#',          'module' => 'timetables', 'action' => 'view'],
         ['pattern' => '#/student/results/#',            'module' => 'results', 'action' => 'view'],
         ['pattern' => '#/student/digital-id/#',         'module' => 'profile', 'action' => 'view'],
-        ['pattern' => '#/student/profile/print#',       'module' => 'profile', 'action' => 'view'],
-        ['pattern' => '#/student/profile/#',             'module' => 'profile', 'action' => 'view'],
+        ['pattern' => '#/student/profile/print#',       'module' => 'profile', 'action' => 'view', 'redirect' => 'profile/print.php'],
+        ['pattern' => '#/student/profile/#',             'module' => 'profile', 'action' => 'view', 'redirect' => 'profile/index.php'],
 
         ['pattern' => '#/parent/children/#',            'module' => 'students', 'action' => 'view'],
         ['pattern' => '#/parent/attendance/#',          'module' => 'attendance', 'action' => 'view'],
         ['pattern' => '#/parent/results/#',              'module' => 'results', 'action' => 'view'],
-        ['pattern' => '#/parent/profile/print#',         'module' => 'profile', 'action' => 'view'],
-        ['pattern' => '#/parent/profile/#',              'module' => 'profile', 'action' => 'view'],
+        ['pattern' => '#/parent/profile/print#',         'module' => 'profile', 'action' => 'view', 'redirect' => 'profile/print.php'],
+        ['pattern' => '#/parent/profile/#',              'module' => 'profile', 'action' => 'view', 'redirect' => 'profile/index.php'],
 
         ['pattern' => '#/settings/permissions/save#', 'module' => 'permissions', 'action' => 'edit'],
         ['pattern' => '#/settings/permissions/#',     'module' => 'permissions', 'action' => 'view'],
 
         ['pattern' => '#/dashboard/#',                 'module' => 'dashboard', 'action' => 'view'],
 
+        ['pattern' => '#/profile/print#',              'module' => 'profile',   'action' => 'view'],
         ['pattern' => '#/profile/#',                  'module' => 'profile',   'action' => 'view'],
 
         ['pattern' => '#/classes/add#',               'module' => 'classes', 'action' => 'create'],
@@ -583,6 +726,7 @@ function permission_resolve_route(string $uri, string $script): ?array
         ['pattern' => '#/sections/#',                 'module' => 'sections', 'action' => 'view'],
 
         ['pattern' => '#/students/add#',              'module' => 'students', 'action' => 'create'],
+        ['pattern' => '#/students/assign-parent#',    'module' => 'students', 'action' => 'edit'],
         ['pattern' => '#/students/edit#',            'module' => 'students', 'action' => 'edit'],
         ['pattern' => '#/students/delete#',           'module' => 'students', 'action' => 'delete'],
         ['pattern' => '#/students/#',                 'module' => 'students', 'action' => 'view'],
@@ -617,9 +761,9 @@ function permission_resolve_route(string $uri, string $script): ?array
         ['pattern' => '#/timetables/entries#',        'module' => 'timetables', 'action' => 'edit'],
         ['pattern' => '#/timetables/#',               'module' => 'timetables', 'action' => 'view'],
 
-        ['pattern' => '#/attendance/teacher/mark#',  'module' => 'teacher_attendance', 'action' => 'create'],
-        ['pattern' => '#/attendance/teacher/report#', 'module' => 'teacher_attendance', 'action' => 'view'],
-        ['pattern' => '#/attendance/teacher/#',       'module' => 'teacher_attendance', 'action' => 'view'],
+        ['pattern' => '#/attendance/teacher/mark#',  'module' => 'teacher_attendance', 'action' => 'create', 'roles' => ['admin']],
+        ['pattern' => '#/attendance/teacher/report#', 'module' => 'teacher_attendance', 'action' => 'view', 'roles' => ['admin']],
+        ['pattern' => '#/attendance/teacher/#',       'module' => 'teacher_attendance', 'action' => 'view', 'roles' => ['admin']],
 
         ['pattern' => '#/attendance/mark#',            'module' => 'attendance', 'action' => 'create'],
         ['pattern' => '#/attendance/edit#',            'module' => 'attendance', 'action' => 'edit'],
@@ -637,12 +781,25 @@ function permission_resolve_route(string $uri, string $script): ?array
         ['pattern' => '#/notifications/#',             'module' => 'notifications', 'action' => 'view'],
 
         ['pattern' => '#/results/add#',                'module' => 'results', 'action' => 'create'],
+        ['pattern' => '#/results/entries#',             'module' => 'results', 'action' => 'edit'],
+        ['pattern' => '#/results/publish#',           'module' => 'results', 'action' => 'edit'],
+        ['pattern' => '#/results/export#',            'module' => 'results', 'action' => 'view'],
+        ['pattern' => '#/results/view#',              'module' => 'results', 'action' => 'view'],
         ['pattern' => '#/results/edit#',               'module' => 'results', 'action' => 'edit'],
         ['pattern' => '#/results/delete#',             'module' => 'results', 'action' => 'delete'],
+        ['pattern' => '#/teacher/results/entries#',    'module' => 'results', 'action' => 'edit'],
+        ['pattern' => '#/teacher/results/#',           'module' => 'results', 'action' => 'view'],
         ['pattern' => '#/results/#',                   'module' => 'results', 'action' => 'view'],
 
+        ['pattern' => '#/exams/add#',                 'module' => 'exams', 'action' => 'create'],
+        ['pattern' => '#/exams/edit#',                'module' => 'exams', 'action' => 'edit'],
+        ['pattern' => '#/exams/delete#',              'module' => 'exams', 'action' => 'delete'],
+        ['pattern' => '#/exams/view#',                'module' => 'exams', 'action' => 'view'],
         ['pattern' => '#/exams/#',                    'module' => 'exams', 'action' => 'view'],
 
+        ['pattern' => '#/transport/.+/add#',           'module' => 'transport', 'action' => 'create'],
+        ['pattern' => '#/transport/.+/edit#',          'module' => 'transport', 'action' => 'edit'],
+        ['pattern' => '#/transport/.+/delete#',        'module' => 'transport', 'action' => 'delete'],
         ['pattern' => '#/transport/add#',              'module' => 'transport', 'action' => 'create'],
         ['pattern' => '#/transport/edit#',             'module' => 'transport', 'action' => 'edit'],
         ['pattern' => '#/transport/delete#',           'module' => 'transport', 'action' => 'delete'],
@@ -651,10 +808,20 @@ function permission_resolve_route(string $uri, string $script): ?array
 
     foreach ($rules as $rule) {
         if (preg_match($rule['pattern'], $path)) {
-            return [
+            $resolved = [
                 'module' => $rule['module'],
                 'action' => $rule['action'],
             ];
+
+            if (!empty($rule['roles'])) {
+                $resolved['roles'] = $rule['roles'];
+            }
+
+            if (!empty($rule['redirect'])) {
+                $resolved['redirect'] = $rule['redirect'];
+            }
+
+            return $resolved;
         }
     }
 
@@ -685,6 +852,8 @@ function permission_guard_request(mysqli $conn): void
 
     $uri    = $_SERVER['REQUEST_URI'] ?? '';
     $script = $_SERVER['SCRIPT_NAME'] ?? '';
+    $role   = strtolower($_SESSION['user']['role'] ?? '');
+    $path   = strtolower(parse_url($uri, PHP_URL_PATH) ?? '');
 
     if (str_contains(strtolower($uri), '/auth/')) {
         return;
@@ -694,13 +863,37 @@ function permission_guard_request(mysqli $conn): void
         return;
     }
 
+            $portal_restrictions = [
+            '#/admin/#'   => ['admin'],
+            '#/teacher/#' => ['teacher'],
+            '#/student/#' => ['student'],
+            '#/parent/#'  => ['parent'],
+            '#/driver/#'  => ['driver'],
+        ];
+
+    foreach ($portal_restrictions as $pattern => $allowed_roles) {
+        if (preg_match($pattern, $path) && !in_array($role, $allowed_roles, true)) {
+            permission_deny_and_exit();
+        }
+    }
+
     $route = permission_resolve_route($uri, $script);
 
     if ($route === null) {
         return;
     }
 
+    if (!empty($route['roles']) && !in_array($role, $route['roles'], true)) {
+        permission_deny_and_exit();
+    }
+
     requirePermission($route['module'], $route['action']);
+
+    if (!empty($route['redirect'])) {
+        require_once __DIR__ . '/constants.php';
+        header('Location: ' . BASE_URL . $route['redirect']);
+        exit();
+    }
 }
 
 
@@ -739,7 +932,8 @@ function permission_fetch_all_grouped(mysqli $conn): array
 function permission_module_label(string $module_key): string
 {
     $admin_labels = [
-        'teacher_attendance' => 'Teacher Attendance',
+        'teacher_attendance' => 'Teacher Attendance (Admin)',
+        'my_teacher_attendance' => 'My Attendance (Teacher View)',
         'teacher_student_attendance' => 'Student Attendance (Teacher Portal)',
         'teacher_my_attendance' => 'My Attendance (Teacher Portal)',
         'teacher_students' => 'Students (Teacher Portal)',

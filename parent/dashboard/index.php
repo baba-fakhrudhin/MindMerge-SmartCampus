@@ -46,7 +46,7 @@ $user_name = portal_greeting_name();
 </div>
 <div class="portal-charts-grid">
 <div class="portal-chart-card"><h3>Attendance Trend</h3><canvas id="attendanceTrendChart"></canvas></div>
-<div class="portal-chart-card"><h3>Performance Trend</h3><p style="color:var(--muted);padding:40px 0;text-align:center;">Results module coming soon.</p></div>
+<div class="portal-chart-card"><h3>Performance Trend</h3><p style="color:var(--muted);padding:40px 0;text-align:center;">Published exam results are available in Child Results.</p></div>
 </div>
 <div class="portal-insights-grid">
 <div class="insight-card">
@@ -60,6 +60,7 @@ $user_name = portal_greeting_name();
 <div class="section-header"><h2>Quick Actions</h2></div>
 <div class="quick-actions">
 <a href="../attendance/index.php" class="action-card" style="text-decoration:none;color:inherit;"><i class="fa-solid fa-calendar-check"></i><h3>View Attendance</h3></a>
+<a href="../../exams/index.php" class="action-card" style="text-decoration:none;color:inherit;"><i class="fa-solid fa-file-lines"></i><h3>View Exams</h3></a>
 <a href="../results/index.php" class="action-card" style="text-decoration:none;color:inherit;"><i class="fa-solid fa-chart-column"></i><h3>View Results</h3></a>
 <a href="../../notifications/index.php" class="action-card" style="text-decoration:none;color:inherit;"><i class="fa-solid fa-bell"></i><h3>Notifications</h3></a>
 </div>

@@ -249,6 +249,11 @@ data-type="<?php echo htmlspecialchars($template['type']); ?>"
 <input type="checkbox" name="targets[]" value="role:admin">
 <i class="fa-solid fa-user-shield"></i> All Admins
 </label>
+<label class="recipient-chip">
+<input type="checkbox" name="targets[]" value="role:driver">
+<i class="fa-solid fa-bus"></i>
+All Drivers
+</label>
 </div>
 </div>
 

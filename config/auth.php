@@ -12,8 +12,12 @@ if (!isset($_SESSION['user'])) {
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/permissions.php';
 
-if (empty($_SESSION['permission_map'])) {
-    permission_load_user($conn, $_SESSION['user']);
-}
+/*
+ * Reload on every authenticated request so role changes and user overrides
+ * become visible immediately, including in the sidebar. The permission table
+ * is intentionally small, making this predictable and avoiding stale access
+ * sessions after an administrator updates the matrix.
+ */
+permission_load_user($conn, $_SESSION['user']);
 
 permission_guard_request($conn);

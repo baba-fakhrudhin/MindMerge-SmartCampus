@@ -16,11 +16,14 @@ function portal_dashboard_path(string $role = ''): string
     $role = $role !== '' ? strtolower($role) : portal_get_role();
 
     $map = [
-        'admin'   => 'admin/dashboard/index.php',
-        'teacher' => 'teacher/dashboard/index.php',
-        'student' => 'student/dashboard/index.php',
-        'parent'  => 'parent/dashboard/index.php',
-    ];
+    'admin'   => 'admin/dashboard/index.php',
+    'teacher' => 'teacher/dashboard/index.php',
+    'student' => 'student/dashboard/index.php',
+    'parent'  => 'parent/dashboard/index.php',
+
+    'driver'  => 'driver/dashboard/index.php',
+    'helper'  => 'driver/dashboard/index.php'
+];
 
     return $map[$role] ?? 'admin/dashboard/index.php';
 }
@@ -43,13 +46,7 @@ function portal_redirect_home(): void
 
 function portal_profile_path(string $role = ''): string
 {
-    $role = $role !== '' ? strtolower($role) : portal_get_role();
-
-    if ($role === 'admin') {
-        return 'profile/index.php';
-    }
-
-    return $role . '/profile/index.php';
+    return 'profile/index.php';
 }
 
 function portal_profile_url(string $role = ''): string

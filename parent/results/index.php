@@ -42,15 +42,16 @@ foreach ($parentService->getChildren() as $child) {
 <div class="dashboard-section">
 <div class="table-responsive">
 <table class="custom-table">
-<thead><tr><th>Child</th><th>Academic Year</th><th>Semester</th><th>Subject</th><th>Total</th><th>Grade</th><th>GPA</th></tr></thead>
+<thead><tr><th>Child</th><th>Exam ID</th><th>Exam</th><th>Date</th><th>Subject</th><th>Total</th><th>Grade</th><th>GPA</th></tr></thead>
 <tbody>
 <?php if (empty($rows)) { ?>
-<tr><td colspan="7"><div class="empty-state"><i class="fa-solid fa-chart-column"></i><h3>No published results</h3><p>Published child results will appear here.</p></div></td></tr>
+<tr><td colspan="8"><div class="empty-state"><i class="fa-solid fa-chart-column"></i><h3>No published results</h3><p>Published child exam results will appear here.</p></div></td></tr>
 <?php } else { foreach ($rows as $row) { ?>
 <tr>
 <td><?php echo htmlspecialchars($row['child_name']); ?></td>
-<td><?php echo htmlspecialchars($row['academic_year']); ?></td>
-<td><?php echo htmlspecialchars($row['semester'] ?? '-'); ?></td>
+<td><strong><?php echo htmlspecialchars($row['exam_code'] ?? 'Legacy'); ?></strong></td>
+<td><?php echo htmlspecialchars($row['exam_name'] ?? 'Result Sheet'); ?></td>
+<td><?php echo !empty($row['exam_date']) ? date('M j, Y', strtotime($row['exam_date'])) : htmlspecialchars($row['academic_year']); ?></td>
 <td><?php echo htmlspecialchars($row['subject_name']); ?></td>
 <td><?php echo htmlspecialchars($row['total_marks']); ?></td>
 <td><?php echo htmlspecialchars($row['grade'] ?? '-'); ?></td>

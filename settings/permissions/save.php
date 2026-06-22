@@ -15,7 +15,13 @@ $save_type = trim($_POST['save_type'] ?? '');
 if ($save_type === 'role') {
     $role = strtolower(trim($_POST['role'] ?? ''));
 
-    if (!in_array($role, ['teacher', 'student', 'parent'], true)) {
+    if (
+    !in_array(
+        $role,
+        ['teacher', 'student', 'parent', 'driver'],
+        true
+    )
+) {
         header('Location: index.php?tab=roles&error=invalid_role');
         exit();
     }

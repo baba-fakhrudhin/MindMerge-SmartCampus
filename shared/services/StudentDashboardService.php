@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__ . '/../../config/notifications.php';
+
 class StudentDashboardService
 {
     private mysqli $conn;
@@ -49,13 +51,9 @@ class StudentDashboardService
         }
 
         $uid = (int) ($_SESSION['user']['id'] ?? 0);
-        $unread = $this->scalar(
-            "SELECT COUNT(DISTINCT n.id)
-             FROM notifications n
-             LEFT JOIN notification_reads nr
-               ON nr.notification_id = n.id AND nr.user_id = '$uid'
-             WHERE nr.read_id IS NULL"
-        );
+        $role = $_SESSION['user']['role'] ?? 'student';
+        $context = notification_user_context($this->conn, $uid, $role);
+        $unread = notification_unread_count($this->conn, $context);
 
         $subjects = $this->scalar(
             "SELECT COUNT(DISTINCT te.subject_id)
@@ -68,9 +66,28 @@ class StudentDashboardService
         return [
             'attendance_pct'      => $attendance_pct,
             'subjects_count'      => $subjects,
-            'upcoming_exams'      => 0,
+            'upcoming_exams'      => $this->upcomingExamCount(),
             'unread_notifications'=> $unread,
+            'latest_gpa'          => $this->getLatestGpa(),
+            'results_trend'       => $this->getResultsTrend(),
         ];
+    }
+
+    public function getLatestGpa(): ?float
+    {
+        require_once __DIR__ . '/ResultsService.php';
+        $service = new ResultsService($this->conn);
+        $gpa = $service->getLatestGpa($this->getStudentDbId());
+
+        return $gpa['gpa'] ?? $gpa['overall_gpa'] ?? null;
+    }
+
+    public function getResultsTrend(): array
+    {
+        require_once __DIR__ . '/ResultsService.php';
+        $service = new ResultsService($this->conn);
+
+        return $service->getPerformanceTrend($this->getStudentDbId());
     }
 
     public function getAttendanceTrend(int $days = 30): array
@@ -198,5 +215,29 @@ class StudentDashboardService
         $row = mysqli_fetch_row($result);
 
         return (int) ($row[0] ?? 0);
+    }
+
+    private function upcomingExamCount(): int
+    {
+        if (!$this->tableHasColumn('exams', 'exam_date')) {
+            return 0;
+        }
+
+        return $this->scalar(
+            "SELECT COUNT(*) FROM exams
+             WHERE status = 'active'
+               AND exam_date >= CURDATE()
+               AND class_id = '" . (int) ($this->student['class_id'] ?? 0) . "'
+               AND section_id = '" . (int) ($this->student['section_id'] ?? 0) . "'"
+        );
+    }
+
+    private function tableHasColumn(string $table, string $column): bool
+    {
+        $table = mysqli_real_escape_string($this->conn, $table);
+        $column = mysqli_real_escape_string($this->conn, $column);
+        $result = mysqli_query($this->conn, "SHOW COLUMNS FROM `$table` LIKE '$column'");
+
+        return $result && mysqli_num_rows($result) > 0;
     }
 }

@@ -239,3 +239,128 @@ table
 });
 
 });
+
+/* ==========================================
+   GLOBAL FORM VALIDATION
+========================================== */
+
+document.addEventListener('DOMContentLoaded', () => {
+
+    // Mobile Number Validation
+    document.querySelectorAll(
+    'input[name*="phone"], input[name*="mobile"], input[type="tel"]'
+).forEach(field => {
+
+        field.addEventListener('input', function () {
+
+            // Allow digits only
+            this.value = this.value.replace(/\D/g, '');
+
+            // Limit to 10 digits
+            if (this.value.length > 10) {
+                this.value = this.value.slice(0, 10);
+            }
+
+        });
+
+        field.addEventListener('blur', function () {
+
+            if (
+                this.value.trim() !== '' &&
+                !/^[6-9]\d{9}$/.test(this.value)
+            ) {
+                this.setCustomValidity(
+                    'Enter a valid 10-digit mobile number'
+                );
+            } else {
+                this.setCustomValidity('');
+            }
+
+        });
+
+    });
+
+
+    // Email Validation
+    document.querySelectorAll('input[type="email"]').forEach(field => {
+
+        field.addEventListener('blur', function () {
+
+            const emailRegex =
+                /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+            if (
+                this.value.trim() !== '' &&
+                !emailRegex.test(this.value)
+            ) {
+                this.setCustomValidity(
+                    'Enter a valid email address'
+                );
+            } else {
+                this.setCustomValidity('');
+            }
+
+        });
+
+    });
+
+
+    // Prevent Invalid Form Submission
+    document.querySelectorAll('form').forEach(form => {
+
+        form.addEventListener('submit', function (e) {
+
+            let valid = true;
+
+            form.querySelectorAll(
+                'input[type="tel"], .mobile-field'
+            ).forEach(field => {
+
+                if (
+                    field.value.trim() !== '' &&
+                    !/^[6-9]\d{9}$/.test(field.value)
+                ) {
+                    valid = false;
+                    field.reportValidity();
+                }
+
+            });
+
+            form.querySelectorAll(
+                'input[type="email"]'
+            ).forEach(field => {
+
+                const emailRegex =
+                    /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+                if (
+                    field.value.trim() !== '' &&
+                    !emailRegex.test(field.value)
+                ) {
+                    valid = false;
+                    field.reportValidity();
+                }
+
+            });
+
+            if (!valid) {
+                e.preventDefault();
+            }
+
+        });
+
+    });
+
+});
+function showFieldError(field, message) {
+
+    let error = field.parentNode.querySelector('.field-error');
+
+    if (!error) {
+        error = document.createElement('small');
+        error.className = 'field-error';
+        field.parentNode.appendChild(error);
+    }
+
+    error.textContent = message;
+}

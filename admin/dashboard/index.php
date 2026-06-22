@@ -172,6 +172,14 @@ $user_name = portal_greeting_name();
 </a>
 <?php } ?>
 
+<?php if (canEdit('students')) { ?>
+<a href="../../students/assign-parent.php" class="action-card" style="text-decoration:none;color:inherit;">
+<i class="fa-solid fa-people-roof"></i>
+<h3>Assign Parent</h3>
+<p>Link students to parent accounts</p>
+</a>
+<?php } ?>
+
 <?php if (canCreate('teachers')) { ?>
 <a href="../../teachers/add.php" class="action-card" style="text-decoration:none;color:inherit;">
 <i class="fa-solid fa-user-tie"></i>
@@ -193,6 +201,14 @@ $user_name = portal_greeting_name();
 <i class="fa-solid fa-bell"></i>
 <h3>Send Notification</h3>
 <p>Broadcast an alert</p>
+</a>
+<?php } ?>
+
+<?php if (canCreate('exams')) { ?>
+<a href="../../exams/add.php" class="action-card" style="text-decoration:none;color:inherit;">
+<i class="fa-solid fa-file-lines"></i>
+<h3>Add Exam</h3>
+<p>Schedule exam and result flow</p>
 </a>
 <?php } ?>
 

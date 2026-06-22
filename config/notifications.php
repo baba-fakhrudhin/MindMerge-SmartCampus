@@ -196,7 +196,7 @@ function notification_parse_targets(array $raw_targets): array
         $target_type  = trim($target_type);
         $target_value = trim($target_value);
 
-        $allowed_types = ['role', 'class', 'section', 'student', 'teacher'];
+        $allowed_types = ['role', 'class', 'section', 'student', 'teacher', 'driver'];
 
         if (
             !in_array($target_type, $allowed_types, true)
@@ -206,7 +206,7 @@ function notification_parse_targets(array $raw_targets): array
         }
 
         if ($target_type === 'role') {
-            $allowed_roles = ['all', 'admin', 'teacher', 'student', 'parent'];
+            $allowed_roles = ['all', 'admin', 'teacher', 'student', 'parent', 'driver'];
             if (!in_array($target_value, $allowed_roles, true)) {
                 continue;
             }
@@ -570,6 +570,7 @@ function notification_format_target_label(
             'teacher' => 'All Teachers',
             'student' => 'All Students',
             'parent'  => 'All Parents',
+            'driver'  => 'All Drivers',
         ];
 
         return $map[$target_value] ?? ucfirst($target_value);

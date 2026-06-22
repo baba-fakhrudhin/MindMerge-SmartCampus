@@ -154,6 +154,60 @@ class TeacherScopeService
         return $subjects;
     }
 
+    public function canAccessTeacherAssignment(int $teacher_assignment_id): bool
+    {
+        if ($teacher_assignment_id <= 0) {
+            return false;
+        }
+
+        foreach ($this->getAssignments() as $a) {
+            if ((int) $a['assignment_id'] === $teacher_assignment_id) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public function canMarkPeriodAttendance(
+        int $class_id,
+        int $section_id,
+        int $period_id,
+        string $day_of_week,
+        int $teacher_assignment_id = 0
+    ): bool {
+        if (!$this->canAccessClassSection($class_id, $section_id)) {
+            return false;
+        }
+
+        if ($teacher_assignment_id > 0) {
+            return $this->canAccessTeacherAssignment($teacher_assignment_id);
+        }
+
+        $tid = $this->getTeacherId();
+
+        if ($tid <= 0 || $period_id <= 0) {
+            return false;
+        }
+
+        $day = mysqli_real_escape_string($this->conn, strtolower($day_of_week));
+        $query = mysqli_query(
+            $this->conn,
+            "SELECT te.entry_id
+             FROM timetable_entries te
+             INNER JOIN timetables t ON t.timetable_id = te.timetable_id
+             INNER JOIN teacher_assignments ta ON ta.assignment_id = te.teacher_assignment_id
+             WHERE t.class_id = '$class_id'
+               AND t.section_id = '$section_id'
+               AND te.period_id = '$period_id'
+               AND te.day_of_week = '$day'
+               AND ta.teacher_id = '$tid'
+             LIMIT 1"
+        );
+
+        return $query && mysqli_num_rows($query) > 0;
+    }
+
     private function loadTeacher(int $user_id): void
     {
         $this->teacher = mysqli_fetch_assoc(mysqli_query(

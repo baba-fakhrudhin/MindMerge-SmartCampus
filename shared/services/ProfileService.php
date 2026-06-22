@@ -69,11 +69,28 @@ class ProfileService
                     "SELECT * FROM parents WHERE user_id = '$user_id'"
                 ));
 
-                if ($data['role_data'] && !empty($data['role_data']['student_id'])) {
-                    $scode = mysqli_real_escape_string(
-                        $this->conn,
-                        $data['role_data']['student_id']
-                    );
+                $parent_links = [];
+                $parent_query = mysqli_query(
+                    $this->conn,
+                    "SELECT * FROM parents WHERE user_id = '$user_id' ORDER BY id ASC"
+                );
+
+                while ($parent_query && $row = mysqli_fetch_assoc($parent_query)) {
+                    $parent_links[] = $row;
+                }
+
+                $data['role_data'] = $parent_links[0] ?? $data['role_data'];
+                $data['extra']['parent_links'] = $parent_links;
+                $student_codes = [];
+
+                foreach ($parent_links as $link) {
+                    if (!empty($link['student_id'])) {
+                        $student_codes[] = "'" . mysqli_real_escape_string($this->conn, $link['student_id']) . "'";
+                    }
+                }
+
+                if (!empty($student_codes)) {
+                    $student_list = implode(',', array_unique($student_codes));
                     $data['extra']['children'] = [];
                     $query = mysqli_query(
                         $this->conn,
@@ -82,7 +99,8 @@ class ProfileService
                          INNER JOIN users u ON u.id = st.user_id
                          LEFT JOIN classes c ON c.class_id = st.class_id
                          LEFT JOIN sections s ON s.section_id = st.section_id
-                         WHERE st.student_id = '$scode'"
+                         WHERE st.student_id IN ($student_list)
+                         ORDER BY u.full_name ASC"
                     );
 
                     while ($row = mysqli_fetch_assoc($query)) {

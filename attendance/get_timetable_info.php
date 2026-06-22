@@ -2,6 +2,7 @@
 
 include('../config/auth.php');
 include('../config/db.php');
+require_once __DIR__ . '/../shared/services/TeacherScopeService.php';
 
 header('Content-Type: application/json');
 
@@ -124,6 +125,26 @@ mysqli_num_rows($query) > 0
 ){
 
 $row = mysqli_fetch_assoc($query);
+
+$teacher_role = strtolower($_SESSION['user']['role'] ?? '') === 'teacher';
+
+if ($teacher_role) {
+    $scope = new TeacherScopeService($conn, (int) $_SESSION['user']['id']);
+
+    if (!$scope->canMarkPeriodAttendance(
+        $class_id,
+        $section_id,
+        $period_id,
+        $day,
+        (int) ($row['teacher_assignment_id'] ?? 0)
+    )) {
+        echo json_encode([
+            'success' => false,
+            'error' => 'You are not assigned to this period.',
+        ]);
+        exit();
+    }
+}
 
 $response = [
 

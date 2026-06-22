@@ -11,7 +11,7 @@ $user_role = $_SESSION['user']['role'] ?? '';
 $notification_id = (int) ($_GET['id'] ?? 0);
 
 $context = notification_user_context($conn, $user_id, $user_role);
-$type_config = notification_type_config();
+
 
 if ($notification_id <= 0) {
     header('Location: index.php');
@@ -58,7 +58,20 @@ if (!$is_read) {
 }
 
 $target_labels = notification_resolve_target_labels($conn, $notification_id);
-$config = notification_type_config($notification['type']);
+$notification_config = notification_type_config($notification['type']);
+
+if (
+    empty($notification_config)
+    || !isset($notification_config['color'])
+) {$notification_config = array_merge([
+    'label' => ucfirst($notification['type']),
+    'icon'  => 'fa-bell',
+    'class' => 'info',
+    'color' => '#2563eb',
+    'bg'    => '#eff6ff'
+], $notification_config);
+
+}
 
 ?>
 <!DOCTYPE html>
@@ -74,8 +87,8 @@ $config = notification_type_config($notification['type']);
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <style>
 .view-preview{
-border-left:5px solid <?php echo $config['color']; ?>;
-background:<?php echo $config['bg']; ?>;
+border-left:5px solid <?php echo $notification_config['color']; ?>;
+background:<?php echo $notification_config['bg']; ?>;
 }
 .info-grid{
 display:grid;
@@ -143,9 +156,9 @@ Notification marked as read.
 <div class="dashboard-section view-preview notif-preview">
 
 <div class="notif-preview-header">
-<span class="notif-preview-badge" style="background:<?php echo $config['bg']; ?>;color:<?php echo $config['color']; ?>;">
-<i class="fa-solid <?php echo $config['icon']; ?>"></i>
-<?php echo htmlspecialchars($config['label']); ?>
+<span class="notif-preview-badge" style="background:<?php echo $notification_config['bg']; ?>;color:<?php echo $notification_config['color']; ?>;">
+<i class="fa-solid <?php echo $notification_config['icon']; ?>"></i>
+<?php echo htmlspecialchars($notification_config['label']); ?>
 </span>
 <span class="status <?php echo $is_read ? 'success' : 'warning'; ?>">
 <?php echo $is_read ? 'Read' : 'Unread'; ?>
@@ -178,8 +191,8 @@ Notification marked as read.
 <div class="info-item">
 <span class="info-label">Type</span>
 <span class="info-value">
-<span class="status <?php echo $config['class']; ?>">
-<?php echo htmlspecialchars($config['label']); ?>
+<span class="status <?php echo $notification_config['class']; ?>">
+<?php echo htmlspecialchars($notification_config['label']); ?>
 </span>
 </span>
 </div>
@@ -207,6 +220,8 @@ Notification marked as read.
 
 </div>
 
+<?php if($_SESSION['user']['role'] === 'admin'){ ?>
+
 <div class="dashboard-section">
 
 <div class="section-header">
@@ -214,19 +229,34 @@ Notification marked as read.
 </div>
 
 <?php if (!empty($target_labels)) { ?>
+
 <div class="notif-target-list">
+
 <?php foreach ($target_labels as $label) { ?>
+
 <span class="notif-target-tag">
+
 <i class="fa-solid fa-user-group"></i>
+
 <?php echo htmlspecialchars($label); ?>
+
 </span>
-<?php } ?>
-</div>
-<?php } else { ?>
-<p style="color:var(--muted);">No specific recipients recorded.</p>
+
 <?php } ?>
 
 </div>
+
+<?php } else { ?>
+
+<div class="alert-banner info">
+<i class="fa-solid fa-triangle-exclamation"></i>
+No recipient information available.
+</div>  
+<?php } ?>
+
+</div>
+
+<?php } ?>
 
 <?php if (!$is_read) { ?>
 <form method="POST" style="margin-top:20px;">
