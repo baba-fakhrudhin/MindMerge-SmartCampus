@@ -2,73 +2,411 @@
 
 include('../config/auth.php');
 include('../config/db.php');
-require_once __DIR__ . '/../shared/services/ExamService.php';
-require_once __DIR__ . '/../shared/services/ResultsService.php';
 
-requirePermission('exams', 'view');
+if(
+!isset($_GET['id'])
+||
+!is_numeric($_GET['id'])
+){
 
-$exam_id = (int) ($_GET['exam_id'] ?? 0);
-$examService = new ExamService($conn);
-$resultService = new ResultsService($conn);
-$exam = $examService->getExamById($exam_id);
+header('Location:index.php');
+exit;
 
-if (!$exam) {
-    header('Location: index.php');
-    exit();
 }
 
-if (isset($_POST['create_result']) && canCreate('results')) {
-    $result_id = $resultService->createResultFromExam($exam_id, (int) $_SESSION['user']['id']);
-    if ($result_id > 0) {
-        header('Location: ../results/entries.php?result_id=' . $result_id . '&success=created');
-        exit();
-    }
+$exam_id = (int)$_GET['id'];
+
+$query = mysqli_query(
+
+$conn,
+
+"SELECT
+
+e.*,
+
+c.class_name,
+
+s.section_name,
+
+sub.subject_name
+
+FROM exams e
+
+LEFT JOIN classes c
+ON e.class_id=c.class_id
+
+LEFT JOIN sections s
+ON e.section_id=s.section_id
+
+LEFT JOIN subjects sub
+ON e.subject_id=sub.subject_id
+
+WHERE e.exam_id='$exam_id'
+
+LIMIT 1"
+
+);
+
+if(mysqli_num_rows($query) == 0){
+
+header('Location:index.php?error=not_found');
+exit;
+
 }
+
+$exam = mysqli_fetch_assoc($query);
 
 ?>
 <!DOCTYPE html>
+
 <html lang="en">
+
 <head>
+
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>View Exam | MindMerge</title>
-<link rel="stylesheet" href="../assets/css/global.css">
-<link rel="stylesheet" href="../assets/css/layout.css">
-<link rel="stylesheet" href="../assets/css/components.css">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+<meta
+name="viewport"
+content="width=device-width, initial-scale=1.0">
+
+<title>
+View Exam | MindMerge SmartCampus
+</title>
+
+<link
+rel="stylesheet"
+href="../assets/css/global.css">
+
+<link
+rel="stylesheet"
+href="../assets/css/layout.css">
+
+<link
+rel="stylesheet"
+href="../assets/css/components.css">
+
+<link
+rel="stylesheet"
+href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
 </head>
+
 <body>
+
 <div class="app-layout">
+
 <?php include('../partials/sidebar.php'); ?>
+
 <div class="main-content">
+
 <?php include('../partials/topbar.php'); ?>
+
 <div class="page-content">
+
 <div class="page-header">
-<div><h1><?php echo htmlspecialchars($exam['exam_name']); ?></h1><p><?php echo htmlspecialchars($exam['exam_code']); ?></p></div>
-<div class="quick-actions">
-<?php if (canEdit('exams')) { ?><a href="edit.php?exam_id=<?php echo $exam_id; ?>" class="btn btn-primary"><i class="fa-solid fa-pen"></i> Edit</a><?php } ?>
-<a href="index.php" class="btn btn-secondary"><i class="fa-solid fa-arrow-left"></i> Back</a>
-</div>
+
+<div>
+
+<h1>
+Exam Details
+</h1>
+
+<p>
+View examination information.
+</p>
+
 </div>
 
-<div class="portal-stats-grid">
-<div class="dashboard-card"><h3>Class</h3><h1 style="font-size:1.4rem;"><?php echo htmlspecialchars($exam['class_name']); ?></h1></div>
-<div class="dashboard-card"><h3>Section</h3><h1 style="font-size:1.4rem;"><?php echo htmlspecialchars($exam['section_name']); ?></h1></div>
-<div class="dashboard-card"><h3>Date</h3><h1 style="font-size:1.4rem;"><?php echo date('M j, Y', strtotime($exam['exam_date'])); ?></h1></div>
-<div class="dashboard-card"><h3>Time</h3><h1 style="font-size:1.4rem;"><?php echo date('g:i A', strtotime($exam['exam_time'])); ?></h1></div>
+<a
+href="index.php"
+class="btn">
+
+<i class="fa-solid fa-arrow-left"></i>
+
+Back
+
+</a>
+
 </div>
 
 <div class="dashboard-section">
-<div class="section-header"><h2>Result Sheet</h2></div>
-<?php if (!empty($exam['result_id'])) { ?>
-<p>This exam already has a result sheet.</p>
-<div class="form-actions"><a href="../results/view.php?result_id=<?php echo (int) $exam['result_id']; ?>" class="btn btn-primary"><i class="fa-solid fa-square-poll-vertical"></i> Open Result</a></div>
-<?php } else { ?>
-<p>Create a result sheet for this exam. Students will be loaded only from <?php echo htmlspecialchars($exam['class_name'] . ' - ' . $exam['section_name']); ?>.</p>
-<?php if (canCreate('results')) { ?><form method="POST" class="form-actions"><button type="submit" name="create_result" class="btn btn-primary"><i class="fa-solid fa-plus"></i> Create Result Sheet</button></form><?php } ?>
-<?php } ?>
+
+<div class="form-grid">
+
+<div class="form-group">
+
+<label>
+Exam Name
+</label>
+
+<div class="form-input">
+
+<?php echo htmlspecialchars($exam['exam_name']); ?>
+
 </div>
-</div></div></div>
+
+</div>
+
+<div class="form-group">
+
+<label>
+Exam Type
+</label>
+
+<div class="form-input">
+
+<?php
+
+echo ucwords(
+str_replace(
+'_',
+' ',
+$exam['exam_type']
+)
+);
+
+?>
+
+</div>
+
+</div>
+
+<div class="form-group">
+
+<label>
+Class
+</label>
+
+<div class="form-input">
+
+<?php
+
+echo htmlspecialchars(
+$exam['class_name'] ?? 'School Wide'
+);
+
+?>
+
+</div>
+
+</div>
+
+<div class="form-group">
+
+<label>
+Section
+</label>
+
+<div class="form-input">
+
+<?php
+
+echo htmlspecialchars(
+$exam['section_name'] ?? '-'
+);
+
+?>
+
+</div>
+
+</div>
+
+<div class="form-group">
+
+<label>
+Subject
+</label>
+
+<div class="form-input">
+
+<?php
+
+echo htmlspecialchars(
+
+!empty($exam['custom_subject'])
+? $exam['custom_subject']
+: ($exam['subject_name'] ?? '-')
+
+);
+
+?>
+
+</div>
+
+</div>
+
+<div class="form-group">
+
+<label>
+Total Marks
+</label>
+
+<div class="form-input">
+
+<?php echo (int)$exam['total_marks']; ?>
+
+</div>
+
+</div>
+
+<div class="form-group">
+
+<label>
+Exam Date
+</label>
+
+<div class="form-input">
+
+<?php
+
+echo !empty($exam['exam_date'])
+? date(
+'d M Y',
+strtotime($exam['exam_date'])
+)
+: '-';
+
+?>
+
+</div>
+
+</div>
+
+<div class="form-group">
+
+<label>
+Time
+</label>
+
+<div class="form-input">
+
+<?php
+
+$start =
+!empty($exam['start_time'])
+? date(
+'h:i A',
+strtotime($exam['start_time'])
+)
+: '';
+
+$end =
+!empty($exam['end_time'])
+? date(
+'h:i A',
+strtotime($exam['end_time'])
+)
+: '';
+
+echo ($start || $end)
+? $start . ' - ' . $end
+: '-';
+
+?>
+
+</div>
+
+</div>
+
+<div class="form-group">
+
+<label>
+Status
+</label>
+
+<div class="form-input">
+
+<?php echo ucfirst($exam['status']); ?>
+
+</div>
+
+</div>
+
+<div class="form-group">
+
+<label>
+Created On
+</label>
+
+<div class="form-input">
+
+<?php
+
+echo date(
+'d M Y h:i A',
+strtotime($exam['created_at'])
+);
+
+?>
+
+</div>
+
+</div>
+
+<div
+class="form-group"
+style="grid-column:1/-1;">
+
+<label>
+Description
+</label>
+
+<div
+class="form-input"
+style="min-height:120px;">
+
+<?php
+
+echo !empty($exam['description'])
+? nl2br(htmlspecialchars($exam['description']))
+: 'No description available.';
+
+?>
+
+</div>
+
+</div>
+
+</div>
+
+<div
+style="
+margin-top:20px;
+display:flex;
+gap:12px;
+flex-wrap:wrap;
+">
+
+<a
+href="edit.php?id=<?php echo $exam['exam_id']; ?>"
+class="btn btn-primary">
+
+<i class="fa-solid fa-pen"></i>
+
+Edit Exam
+
+</a>
+
+<a
+href="index.php"
+class="btn">
+
+Close
+
+</a>
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+
 <script src="../assets/js/common.js"></script>
+
 </body>
+
 </html>

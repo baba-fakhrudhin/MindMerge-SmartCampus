@@ -277,17 +277,34 @@ color:var(--muted);
 
 <div class="page-header">
 
-    <div>
+<div>
 
-        <h1>
-            Teacher Attendance
-        </h1>
+<h1>Teacher Attendance</h1>
 
-        <p>
-            Manage faculty attendance records, reports and daily attendance activities.
-        </p>
+<p>
+Manage teacher attendance records.
+</p>
 
-    </div>
+</div>
+
+<div
+style="
+display:flex;
+gap:10px;
+flex-wrap:wrap;
+">
+
+<a
+href="../../attendance/index.php"
+class="btn">
+
+<i class="fa-solid fa-arrow-left"></i>
+
+Back to Attendance
+
+</a>
+
+</div>
 
 </div>
 

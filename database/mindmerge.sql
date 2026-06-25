@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Jun 20, 2026 at 04:50 AM
+-- Generation Time: Jun 25, 2026 at 06:06 AM
 -- Server version: 10.4.25-MariaDB
 -- PHP Version: 8.1.10
 
@@ -98,51 +98,6 @@ INSERT INTO `attendance_records` (`record_id`, `attendance_id`, `student_id`, `s
 -- --------------------------------------------------------
 
 --
--- Table structure for table `buses`
---
-
-CREATE TABLE `buses` (
-  `bus_id` int(11) NOT NULL,
-  `bus_number` varchar(50) NOT NULL,
-  `registration_number` varchar(50) NOT NULL,
-  `capacity` int(11) NOT NULL DEFAULT 0,
-  `driver_id` int(11) DEFAULT NULL,
-  `helper_id` int(11) DEFAULT NULL,
-  `status` enum('active','inactive','maintenance') NOT NULL DEFAULT 'active',
-  `latitude` decimal(10,7) DEFAULT NULL,
-  `longitude` decimal(10,7) DEFAULT NULL,
-  `last_updated` datetime DEFAULT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
---
--- Dumping data for table `buses`
---
-
-INSERT INTO `buses` (`bus_id`, `bus_number`, `registration_number`, `capacity`, `driver_id`, `helper_id`, `status`, `latitude`, `longitude`, `last_updated`, `created_at`) VALUES
-(1, '10', 'AP03 134133', 34, NULL, NULL, 'active', '32.0000047', '23.2323000', '2026-06-04 14:52:00', '2026-06-19 07:22:09'),
-(2, '11', 'AP03 134134', 60, NULL, NULL, 'active', NULL, NULL, NULL, '2026-06-19 12:17:46');
-
--- --------------------------------------------------------
-
---
--- Table structure for table `bus_assignments`
---
-
-CREATE TABLE `bus_assignments` (
-  `assignment_id` int(11) NOT NULL,
-  `bus_id` int(11) NOT NULL,
-  `route_id` int(11) NOT NULL,
-  `student_id` int(11) NOT NULL,
-  `pickup_stop_id` int(11) DEFAULT NULL,
-  `drop_stop_id` int(11) DEFAULT NULL,
-  `status` enum('active','inactive') NOT NULL DEFAULT 'active',
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- --------------------------------------------------------
-
---
 -- Table structure for table `classes`
 --
 
@@ -160,32 +115,8 @@ CREATE TABLE `classes` (
 --
 
 INSERT INTO `classes` (`class_id`, `class_code`, `class_name`, `description`, `status`, `created_at`) VALUES
-(12, 'CSE', 'Computer Science & Engineering', '', 'active', '2026-06-11 05:25:04'),
-(13, 'CAI', 'Computer Science & Engineering AI', '', 'active', '2026-06-11 05:26:06');
-
--- --------------------------------------------------------
-
---
--- Table structure for table `drivers`
---
-
-CREATE TABLE `drivers` (
-  `driver_id` int(11) NOT NULL,
-  `phone` varchar(20) NOT NULL,
-  `license_number` varchar(80) NOT NULL,
-  `address` text DEFAULT NULL,
-  `status` enum('active','inactive') NOT NULL DEFAULT 'active',
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `name` varchar(120) DEFAULT NULL,
-  `license_expiry` date DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
---
--- Dumping data for table `drivers`
---
-
-INSERT INTO `drivers` (`driver_id`, `phone`, `license_number`, `address`, `status`, `created_at`, `name`, `license_expiry`) VALUES
-(1, '8790844365', 'EX101', '9-87, nagoor colongy, kuntrapakam(post)\r\ntirupati rural', 'active', '2026-06-19 12:18:53', 'Ballaya', '2026-07-01');
+(12, '10', 'Tenth', '', 'active', '2026-06-11 05:25:04'),
+(13, '11', 'Inter first year', '', 'active', '2026-06-11 05:26:06');
 
 -- --------------------------------------------------------
 
@@ -195,91 +126,99 @@ INSERT INTO `drivers` (`driver_id`, `phone`, `license_number`, `address`, `statu
 
 CREATE TABLE `exams` (
   `exam_id` int(11) NOT NULL,
-  `exam_code` varchar(40) DEFAULT NULL,
-  `exam_type_id` int(11) DEFAULT NULL,
+  `exam_name` varchar(100) NOT NULL,
+  `exam_type` enum('unit_test','mid_exam','semester','annual','custom') DEFAULT 'custom',
   `class_id` int(11) DEFAULT NULL,
   `section_id` int(11) DEFAULT NULL,
-  `exam_name` varchar(150) NOT NULL,
-  `academic_year` varchar(20) NOT NULL,
+  `subject_id` int(11) DEFAULT NULL,
+  `custom_subject` varchar(100) DEFAULT NULL,
+  `total_marks` int(11) DEFAULT 100,
   `exam_date` date DEFAULT NULL,
-  `exam_time` time DEFAULT NULL,
-  `status` enum('active','inactive') NOT NULL DEFAULT 'active',
-  `created_by` int(11) DEFAULT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- --------------------------------------------------------
-
---
--- Table structure for table `exam_halls`
---
-
-CREATE TABLE `exam_halls` (
-  `hall_id` int(11) NOT NULL,
-  `hall_name` varchar(100) NOT NULL,
-  `capacity` int(11) NOT NULL DEFAULT 0,
-  `status` enum('active','inactive') NOT NULL DEFAULT 'active'
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- --------------------------------------------------------
-
---
--- Table structure for table `exam_hall_allocations`
---
-
-CREATE TABLE `exam_hall_allocations` (
-  `allocation_id` int(11) NOT NULL,
-  `schedule_id` int(11) NOT NULL,
-  `hall_id` int(11) NOT NULL,
-  `student_id` int(11) DEFAULT NULL,
-  `seat_no` varchar(30) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- --------------------------------------------------------
-
---
--- Table structure for table `exam_invigilators`
---
-
-CREATE TABLE `exam_invigilators` (
-  `invigilator_id` int(11) NOT NULL,
-  `schedule_id` int(11) NOT NULL,
-  `teacher_id` int(11) NOT NULL,
-  `duty_role` varchar(50) DEFAULT 'invigilator'
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- --------------------------------------------------------
-
---
--- Table structure for table `exam_schedule`
---
-
-CREATE TABLE `exam_schedule` (
-  `schedule_id` int(11) NOT NULL,
-  `exam_id` int(11) NOT NULL,
-  `class_id` int(11) NOT NULL,
-  `section_id` int(11) DEFAULT NULL,
-  `subject_id` int(11) NOT NULL,
-  `exam_date` date NOT NULL,
-  `start_time` time NOT NULL,
-  `end_time` time NOT NULL,
-  `room_no` varchar(50) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- --------------------------------------------------------
-
---
--- Table structure for table `exam_types`
---
-
-CREATE TABLE `exam_types` (
-  `exam_type_id` int(11) NOT NULL,
-  `type_name` varchar(100) NOT NULL,
+  `start_time` time DEFAULT NULL,
+  `end_time` time DEFAULT NULL,
   `description` text DEFAULT NULL,
-  `status` enum('active','inactive') NOT NULL DEFAULT 'active',
+  `status` enum('upcoming','ongoing','completed') DEFAULT 'upcoming',
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+--
+-- Dumping data for table `exams`
+--
+
+INSERT INTO `exams` (`exam_id`, `exam_name`, `exam_type`, `class_id`, `section_id`, `subject_id`, `custom_subject`, `total_marks`, `exam_date`, `start_time`, `end_time`, `description`, `status`, `created_at`) VALUES
+(4, 'Maths', 'annual', 12, 11, NULL, 'Maths', 100, '2026-06-24', '09:30:00', '10:30:00', '', 'upcoming', '2026-06-23 12:41:02');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `exam_subjects`
+--
+
+CREATE TABLE `exam_subjects` (
+  `exam_subject_id` int(11) NOT NULL,
+  `exam_id` int(11) NOT NULL,
+  `class_id` int(11) NOT NULL,
+  `subject_id` int(11) NOT NULL,
+  `exam_date` date DEFAULT NULL,
+  `start_time` time DEFAULT NULL,
+  `end_time` time DEFAULT NULL,
+  `max_marks` int(11) DEFAULT 100,
+  `pass_marks` int(11) DEFAULT 35,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `fee_payments`
+--
+
+CREATE TABLE `fee_payments` (
+  `payment_id` int(11) NOT NULL,
+  `receipt_no` varchar(50) DEFAULT NULL,
+  `student_fee_id` int(11) NOT NULL,
+  `amount_paid` decimal(10,2) NOT NULL,
+  `payment_date` date NOT NULL,
+  `payment_method` enum('cash','upi','card','bank_transfer','cheque') DEFAULT 'cash',
+  `transaction_ref` varchar(100) DEFAULT NULL,
+  `remarks` varchar(255) DEFAULT NULL,
+  `created_by` int(11) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+--
+-- Dumping data for table `fee_payments`
+--
+
+INSERT INTO `fee_payments` (`payment_id`, `receipt_no`, `student_fee_id`, `amount_paid`, `payment_date`, `payment_method`, `transaction_ref`, `remarks`, `created_by`, `created_at`) VALUES
+(1, 'MMF202606244600', 3, '4500.00', '2026-06-24', 'upi', 'UTR000001', '', 26, '2026-06-24 10:03:12'),
+(2, 'MMF202606251914', 4, '3500.00', '2026-06-25', 'cash', 'UTR000002', '', 26, '2026-06-25 03:49:53');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `fee_structures`
+--
+
+CREATE TABLE `fee_structures` (
+  `fee_structure_id` int(11) NOT NULL,
+  `class_id` int(11) NOT NULL,
+  `fee_name` varchar(100) NOT NULL,
+  `amount` decimal(10,2) NOT NULL,
+  `due_date` date DEFAULT NULL,
+  `academic_year` varchar(20) DEFAULT '2026-27',
+  `description` text DEFAULT NULL,
+  `status` enum('active','inactive') DEFAULT 'active',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+--
+-- Dumping data for table `fee_structures`
+--
+
+INSERT INTO `fee_structures` (`fee_structure_id`, `class_id`, `fee_name`, `amount`, `due_date`, `academic_year`, `description`, `status`, `created_at`) VALUES
+(1, 13, 'Library Fee', '4500.00', '2026-06-30', '2026-27', '', 'active', '2026-06-23 15:22:22'),
+(2, 12, 'Library Fee', '4500.00', '2026-06-30', '2026-27', '', 'active', '2026-06-23 15:22:39');
 
 -- --------------------------------------------------------
 
@@ -296,28 +235,6 @@ CREATE TABLE `grading_system` (
   `status` enum('active','inactive') NOT NULL DEFAULT 'active',
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- --------------------------------------------------------
-
---
--- Table structure for table `helpers`
---
-
-CREATE TABLE `helpers` (
-  `helper_id` int(11) NOT NULL,
-  `name` varchar(120) NOT NULL,
-  `phone` varchar(20) NOT NULL,
-  `address` text DEFAULT NULL,
-  `status` enum('active','inactive') NOT NULL DEFAULT 'active',
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
---
--- Dumping data for table `helpers`
---
-
-INSERT INTO `helpers` (`helper_id`, `name`, `phone`, `address`, `status`, `created_at`) VALUES
-(1, 'bunny', '8790844365', '9-87, nagoor colongy, kuntrapakam(post)\r\ntirupati rural', 'active', '2026-06-19 12:19:26');
 
 -- --------------------------------------------------------
 
@@ -344,7 +261,8 @@ INSERT INTO `notifications` (`id`, `title`, `message`, `type`, `source_module`, 
 (1, 'All students should attend to class properly', 'Message to all students', 'attendance', NULL, NULL, 24, '2026-06-12 12:42:31'),
 (2, 'Results Published', 'Examination results are now available. Log in to the portal to view your detailed mark sheet and performance summary.', 'result', NULL, NULL, 26, '2026-06-13 06:27:57'),
 (3, 'Exam Schedule Published', 'The examination schedule has been published. Please check the exam dates, timings, and venue details on the portal.', 'exam', NULL, NULL, 26, '2026-06-13 06:32:24'),
-(4, 'Holiday Announcement', 'The campus will remain closed on the announced holiday. Regular classes and activities will resume on the next working day.', 'holiday', NULL, NULL, 26, '2026-06-14 10:40:44');
+(4, 'Holiday Announcement', 'The campus will remain closed on the announced holiday. Regular classes and activities will resume on the next working day.', 'holiday', NULL, NULL, 26, '2026-06-14 10:40:44'),
+(5, 'All Drivers are Requested', 'All Avaliable Drivers kindly Report to Auditorium Immediately', 'general', NULL, NULL, 26, '2026-06-21 15:05:02');
 
 -- --------------------------------------------------------
 
@@ -372,7 +290,9 @@ INSERT INTO `notification_reads` (`read_id`, `notification_id`, `user_id`, `read
 (6, 2, 24, '2026-06-13 06:33:08'),
 (7, 3, 24, '2026-06-13 06:33:15'),
 (8, 4, 26, '2026-06-14 10:40:44'),
-(9, 4, 16, '2026-06-14 10:41:34');
+(9, 4, 16, '2026-06-14 10:41:34'),
+(10, 5, 26, '2026-06-21 15:05:02'),
+(11, 5, 28, '2026-06-21 15:28:28');
 
 -- --------------------------------------------------------
 
@@ -395,7 +315,8 @@ INSERT INTO `notification_targets` (`target_id`, `notification_id`, `target_type
 (1, 1, 'student', 'STU00007'),
 (2, 2, 'section', '11'),
 (3, 3, 'role', 'teacher'),
-(4, 4, 'role', 'student');
+(4, 4, 'role', 'student'),
+(5, 5, 'role', 'driver');
 
 -- --------------------------------------------------------
 
@@ -564,7 +485,11 @@ INSERT INTO `permissions` (`permission_id`, `module_key`, `action_key`, `label`,
 (50, 'transport', 'view', 'View Transport', 195),
 (51, 'transport', 'create', 'Create Transport', 196),
 (52, 'transport', 'edit', 'Edit Transport', 197),
-(53, 'transport', 'delete', 'Delete Transport', 198);
+(53, 'transport', 'delete', 'Delete Transport', 198),
+(99, 'fees', 'view', 'View Fees', 500),
+(100, 'fees', 'create', 'Create Fees', 501),
+(101, 'fees', 'edit', 'Edit Fees', 502),
+(102, 'fees', 'delete', 'Delete Fees', 503);
 
 -- --------------------------------------------------------
 
@@ -574,56 +499,45 @@ INSERT INTO `permissions` (`permission_id`, `module_key`, `action_key`, `label`,
 
 CREATE TABLE `results` (
   `result_id` int(11) NOT NULL,
-  `exam_id` int(11) DEFAULT NULL,
+  `exam_id` int(11) NOT NULL,
   `class_id` int(11) NOT NULL,
   `section_id` int(11) NOT NULL,
-  `academic_year` varchar(20) NOT NULL,
-  `semester` varchar(50) DEFAULT NULL,
-  `result_type` varchar(50) NOT NULL DEFAULT 'semester',
-  `status` enum('draft','published','archived') NOT NULL DEFAULT 'draft',
-  `created_by` int(11) DEFAULT NULL,
-  `published_at` datetime DEFAULT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp()
+  `published_at` timestamp NULL DEFAULT NULL,
+  `status` enum('draft','published') DEFAULT 'draft',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 --
 -- Dumping data for table `results`
 --
 
-INSERT INTO `results` (`result_id`, `class_id`, `section_id`, `academic_year`, `semester`, `result_type`, `status`, `created_by`, `published_at`, `created_at`, `updated_at`) VALUES
-(1, 12, 11, '2025-26', 'Semester 4', 'mid_term', 'draft', 26, NULL, '2026-06-19 12:22:11', NULL);
+INSERT INTO `results` (`result_id`, `exam_id`, `class_id`, `section_id`, `published_at`, `status`, `created_at`) VALUES
+(3, 4, 12, 11, '2026-06-23 12:41:49', 'published', '2026-06-23 12:41:11'),
+(4, 5, 0, 0, NULL, 'draft', '2026-06-23 12:54:46');
 
 -- --------------------------------------------------------
 
 --
--- Table structure for table `result_entries`
+-- Table structure for table `result_marks`
 --
 
-CREATE TABLE `result_entries` (
-  `entry_id` int(11) NOT NULL,
+CREATE TABLE `result_marks` (
+  `mark_id` int(11) NOT NULL,
   `result_id` int(11) NOT NULL,
   `student_id` int(11) NOT NULL,
-  `subject_id` int(11) NOT NULL,
-  `teacher_id` int(11) DEFAULT NULL,
-  `internal_marks` decimal(6,2) NOT NULL DEFAULT 0.00,
-  `external_marks` decimal(6,2) NOT NULL DEFAULT 0.00,
-  `lab_marks` decimal(6,2) NOT NULL DEFAULT 0.00,
-  `attendance_marks` decimal(6,2) NOT NULL DEFAULT 0.00,
-  `total_marks` decimal(6,2) NOT NULL DEFAULT 0.00,
-  `grade` varchar(20) DEFAULT NULL,
-  `grade_point` decimal(4,2) DEFAULT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp()
+  `marks_obtained` decimal(6,2) DEFAULT 0.00,
+  `remarks` varchar(255) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 --
--- Dumping data for table `result_entries`
+-- Dumping data for table `result_marks`
 --
 
-INSERT INTO `result_entries` (`entry_id`, `result_id`, `student_id`, `subject_id`, `teacher_id`, `internal_marks`, `external_marks`, `lab_marks`, `attendance_marks`, `total_marks`, `grade`, `grade_point`, `created_at`, `updated_at`) VALUES
-(1, 1, 6, 7, NULL, '20.00', '80.00', '100.00', '100.00', '300.00', '', NULL, '2026-06-19 12:22:34', NULL),
-(2, 1, 7, 7, NULL, '10.00', '80.00', '100.00', '100.00', '290.00', '', NULL, '2026-06-19 12:22:34', NULL);
+INSERT INTO `result_marks` (`mark_id`, `result_id`, `student_id`, `marks_obtained`, `remarks`, `created_at`) VALUES
+(1, 3, 6, '98.00', 'Good', '2026-06-23 12:41:41'),
+(2, 3, 7, '97.00', 'Good', '2026-06-23 12:41:41'),
+(3, 3, 13, '37.00', 'Border Pass', '2026-06-23 12:41:41');
 
 -- --------------------------------------------------------
 
@@ -633,7 +547,7 @@ INSERT INTO `result_entries` (`entry_id`, `result_id`, `student_id`, `subject_id
 
 CREATE TABLE `role_permissions` (
   `role_permission_id` int(11) NOT NULL,
-  `role` enum('admin','teacher','student','parent') NOT NULL,
+  `role` enum('admin','teacher','student','parent','driver') NOT NULL,
   `permission_id` int(11) NOT NULL,
   `granted` tinyint(1) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -695,44 +609,44 @@ INSERT INTO `role_permissions` (`role_permission_id`, `role`, `permission_id`, `
 (68, 'teacher', 5, 0),
 (69, 'teacher', 7, 0),
 (70, 'teacher', 6, 0),
-(71, 'teacher', 4, 0),
+(71, 'teacher', 4, 1),
 (72, 'teacher', 1, 1),
 (73, 'teacher', 41, 0),
 (74, 'teacher', 43, 0),
 (75, 'teacher', 42, 0),
-(76, 'teacher', 40, 0),
+(76, 'teacher', 40, 1),
 (77, 'teacher', 37, 1),
 (78, 'teacher', 39, 0),
 (79, 'teacher', 38, 0),
-(80, 'teacher', 36, 0),
+(80, 'teacher', 36, 1),
 (81, 'teacher', 45, 0),
 (82, 'teacher', 44, 0),
 (83, 'teacher', 3, 1),
-(84, 'teacher', 2, 0),
+(84, 'teacher', 2, 1),
 (85, 'teacher', 21, 0),
 (86, 'teacher', 23, 0),
 (87, 'teacher', 22, 0),
-(88, 'teacher', 20, 0),
+(88, 'teacher', 20, 1),
 (89, 'teacher', 9, 0),
 (90, 'teacher', 11, 0),
 (91, 'teacher', 10, 0),
-(92, 'teacher', 8, 0),
+(92, 'teacher', 8, 1),
 (93, 'teacher', 13, 0),
 (94, 'teacher', 15, 0),
 (95, 'teacher', 14, 0),
-(96, 'teacher', 12, 0),
+(96, 'teacher', 12, 1),
 (97, 'teacher', 17, 0),
 (98, 'teacher', 19, 0),
 (99, 'teacher', 18, 0),
-(100, 'teacher', 16, 0),
+(100, 'teacher', 16, 1),
 (101, 'teacher', 33, 0),
 (102, 'teacher', 35, 0),
 (103, 'teacher', 34, 0),
-(104, 'teacher', 32, 0),
+(104, 'teacher', 32, 1),
 (105, 'teacher', 25, 0),
 (106, 'teacher', 27, 0),
 (107, 'teacher', 26, 0),
-(108, 'teacher', 24, 0),
+(108, 'teacher', 24, 1),
 (127, 'student', 29, 0),
 (128, 'student', 31, 0),
 (129, 'student', 30, 0),
@@ -834,11 +748,11 @@ INSERT INTO `role_permissions` (`role_permission_id`, `role`, `permission_id`, `
 (448, 'teacher', 47, 1),
 (449, 'teacher', 49, 0),
 (450, 'teacher', 48, 1),
-(451, 'teacher', 46, 0),
+(451, 'teacher', 46, 1),
 (452, 'teacher', 51, 0),
 (453, 'teacher', 53, 0),
 (454, 'teacher', 52, 0),
-(455, 'teacher', 50, 0),
+(455, 'teacher', 50, 1),
 (463, 'student', 47, 0),
 (464, 'student', 49, 0),
 (465, 'student', 48, 0),
@@ -854,51 +768,64 @@ INSERT INTO `role_permissions` (`role_permission_id`, `role`, `permission_id`, `
 (482, 'parent', 51, 0),
 (483, 'parent', 53, 0),
 (484, 'parent', 52, 0),
-(485, 'parent', 50, 1);
-
--- --------------------------------------------------------
-
---
--- Table structure for table `routes`
---
-
-CREATE TABLE `routes` (
-  `route_id` int(11) NOT NULL,
-  `route_name` varchar(120) NOT NULL,
-  `start_location` varchar(150) DEFAULT NULL,
-  `end_location` varchar(150) DEFAULT NULL,
-  `status` enum('active','inactive') NOT NULL DEFAULT 'active',
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
---
--- Dumping data for table `routes`
---
-
-INSERT INTO `routes` (`route_id`, `route_name`, `start_location`, `end_location`, `status`, `created_at`) VALUES
-(1, 'Main Route', 'gachuvaka', 'Bobili', 'active', '2026-06-19 12:19:54');
-
--- --------------------------------------------------------
-
---
--- Table structure for table `route_stops`
---
-
-CREATE TABLE `route_stops` (
-  `route_stop_id` int(11) NOT NULL,
-  `route_id` int(11) NOT NULL,
-  `stop_id` int(11) NOT NULL,
-  `stop_order` int(11) NOT NULL,
-  `arrival_time` time DEFAULT NULL,
-  `departure_time` time DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
---
--- Dumping data for table `route_stops`
---
-
-INSERT INTO `route_stops` (`route_stop_id`, `route_id`, `stop_id`, `stop_order`, `arrival_time`, `departure_time`) VALUES
-(1, 1, 1, 10, NULL, NULL);
+(485, 'parent', 50, 1),
+(811, '', 1, 1),
+(812, '', 36, 1),
+(813, '', 2, 1),
+(814, '', 50, 1),
+(818, 'driver', 1, 1),
+(819, 'driver', 36, 1),
+(820, 'driver', 2, 1),
+(821, 'driver', 50, 1),
+(827, 'driver', 29, 0),
+(828, 'driver', 31, 0),
+(829, 'driver', 30, 0),
+(830, 'driver', 28, 0),
+(831, 'driver', 5, 0),
+(832, 'driver', 7, 0),
+(833, 'driver', 6, 0),
+(834, 'driver', 4, 0),
+(835, 'driver', 41, 0),
+(836, 'driver', 43, 0),
+(837, 'driver', 42, 0),
+(838, 'driver', 40, 0),
+(839, 'driver', 37, 0),
+(840, 'driver', 39, 0),
+(841, 'driver', 38, 0),
+(842, 'driver', 45, 0),
+(843, 'driver', 44, 0),
+(844, 'driver', 3, 0),
+(845, 'driver', 47, 0),
+(846, 'driver', 49, 0),
+(847, 'driver', 48, 0),
+(848, 'driver', 46, 0),
+(849, 'driver', 21, 0),
+(850, 'driver', 23, 0),
+(851, 'driver', 22, 0),
+(852, 'driver', 20, 0),
+(853, 'driver', 9, 0),
+(854, 'driver', 11, 0),
+(855, 'driver', 10, 0),
+(856, 'driver', 8, 0),
+(857, 'driver', 13, 0),
+(858, 'driver', 15, 0),
+(859, 'driver', 14, 0),
+(860, 'driver', 12, 0),
+(861, 'driver', 17, 0),
+(862, 'driver', 19, 0),
+(863, 'driver', 18, 0),
+(864, 'driver', 16, 0),
+(865, 'driver', 33, 0),
+(866, 'driver', 35, 0),
+(867, 'driver', 34, 0),
+(868, 'driver', 32, 0),
+(869, 'driver', 25, 0),
+(870, 'driver', 27, 0),
+(871, 'driver', 26, 0),
+(872, 'driver', 24, 0),
+(873, 'driver', 51, 0),
+(874, 'driver', 53, 0),
+(875, 'driver', 52, 0);
 
 -- --------------------------------------------------------
 
@@ -929,28 +856,6 @@ INSERT INTO `sections` (`section_id`, `class_id`, `section_code`, `section_name`
 -- --------------------------------------------------------
 
 --
--- Table structure for table `stops`
---
-
-CREATE TABLE `stops` (
-  `stop_id` int(11) NOT NULL,
-  `stop_name` varchar(150) NOT NULL,
-  `latitude` decimal(10,7) DEFAULT NULL,
-  `longitude` decimal(10,7) DEFAULT NULL,
-  `status` enum('active','inactive') NOT NULL DEFAULT 'active',
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
---
--- Dumping data for table `stops`
---
-
-INSERT INTO `stops` (`stop_id`, `stop_name`, `latitude`, `longitude`, `status`, `created_at`) VALUES
-(1, 'Nadavaluru', '13.5506157', '79.4219513', 'active', '2026-06-19 12:25:05');
-
--- --------------------------------------------------------
-
---
 -- Table structure for table `students`
 --
 
@@ -974,13 +879,46 @@ CREATE TABLE `students` (
 --
 
 INSERT INTO `students` (`id`, `user_id`, `student_id`, `class_id`, `section_id`, `class_name`, `section_name`, `dob`, `gender`, `address`, `parent_phone`, `created_at`) VALUES
-(6, 16, 'STU00001', 12, 11, '', '', '2026-06-11', 'male', '', '9000322870', '2026-06-11 05:30:45'),
+(6, 16, 'STU00001', 12, 11, 'Computer Science & Engineering', 'A Section', '2026-06-11', 'male', '', '9000322870', '2026-06-11 05:30:45'),
 (7, 17, 'STU00002', 12, 11, 'Computer Science & Engineering', 'A Section', '2026-06-11', 'male', '', '', '2026-06-11 05:31:26'),
 (8, 18, 'STU00003', 12, 12, 'Computer Science & Engineering', 'B Section', '2008-10-10', 'male', '', '9000322870', '2026-06-11 05:32:15'),
 (9, 19, 'STU00004', 12, 12, 'Computer Science & Engineering', 'B Section', '2026-06-11', 'male', '', '8790844365', '2026-06-11 05:33:02'),
 (10, 20, 'STU00005', 13, 13, 'Computer Science & Engineering', 'A Section', '2026-06-30', 'male', '9-87, nagoor colongy, kuntrapakam(post)\r\ntirupati rural', '9000322870', '2026-06-11 05:33:34'),
 (11, 21, 'STU00006', 13, 14, 'Computer Science & Engineering', 'B Section', '2026-12-31', 'male', '', '8790844365', '2026-06-11 05:34:20'),
-(12, 22, 'STU00007', 13, 14, 'Computer Science & Engineering', 'B Section', '2023-11-30', 'male', '', '997934', '2026-06-11 05:35:29');
+(12, 22, 'STU00007', 13, 14, 'Computer Science & Engineering', 'B Section', '2023-11-30', 'male', '', '997934', '2026-06-11 05:35:29'),
+(13, 31, 'STU00008', 12, 11, 'Computer Science & Engineering', 'A Section', '2000-02-20', 'male', '9-87, nagoor colongy, kuntrapakam(post)\r\ntirupati rural', '9192320232', '2026-06-22 00:05:33');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `student_fees`
+--
+
+CREATE TABLE `student_fees` (
+  `student_fee_id` int(11) NOT NULL,
+  `student_id` int(11) NOT NULL,
+  `fee_structure_id` int(11) NOT NULL,
+  `amount` decimal(10,2) NOT NULL,
+  `paid_amount` decimal(10,2) DEFAULT 0.00,
+  `balance_amount` decimal(10,2) NOT NULL,
+  `payment_status` enum('unpaid','partial','paid') DEFAULT 'unpaid',
+  `last_payment_date` date DEFAULT NULL,
+  `assigned_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+--
+-- Dumping data for table `student_fees`
+--
+
+INSERT INTO `student_fees` (`student_fee_id`, `student_id`, `fee_structure_id`, `amount`, `paid_amount`, `balance_amount`, `payment_status`, `last_payment_date`, `assigned_at`) VALUES
+(1, 12, 1, '4500.00', '0.00', '4500.00', 'unpaid', NULL, '2026-06-24 09:37:46'),
+(2, 10, 1, '4500.00', '0.00', '4500.00', 'unpaid', NULL, '2026-06-24 09:37:46'),
+(3, 11, 1, '4500.00', '4500.00', '0.00', 'paid', '2026-06-24', '2026-06-24 09:37:46'),
+(4, 6, 2, '4500.00', '3500.00', '1000.00', 'partial', '2026-06-25', '2026-06-24 09:38:25'),
+(5, 7, 2, '4500.00', '0.00', '4500.00', 'unpaid', NULL, '2026-06-24 09:38:25'),
+(6, 8, 2, '4500.00', '0.00', '4500.00', 'unpaid', NULL, '2026-06-24 09:38:25'),
+(7, 9, 2, '4500.00', '0.00', '4500.00', 'unpaid', NULL, '2026-06-24 09:38:25'),
+(8, 13, 2, '4500.00', '0.00', '4500.00', 'unpaid', NULL, '2026-06-24 09:38:25');
 
 -- --------------------------------------------------------
 
@@ -1032,7 +970,8 @@ CREATE TABLE `teachers` (
 
 INSERT INTO `teachers` (`id`, `user_id`, `teacher_id`, `class_id`, `section_id`, `subject_name`, `qualification`, `specialization`, `salary`, `created_at`) VALUES
 (7, 23, 'TCH00001', NULL, NULL, NULL, 'M.tech.,', NULL, NULL, '2026-06-11 05:36:14'),
-(8, 24, 'TCH00002', NULL, NULL, NULL, 'M.Tech.,', NULL, NULL, '2026-06-11 05:36:55');
+(8, 24, 'TCH00002', NULL, NULL, NULL, 'M.Tech.,', NULL, NULL, '2026-06-11 05:36:55'),
+(9, 30, 'TCH00003', NULL, NULL, NULL, 'M.Tech.,', NULL, NULL, '2026-06-22 00:03:49');
 
 -- --------------------------------------------------------
 
@@ -1153,6 +1092,181 @@ INSERT INTO `timetable_entries` (`entry_id`, `timetable_id`, `day_of_week`, `per
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `transport_buses`
+--
+
+CREATE TABLE `transport_buses` (
+  `bus_id` int(11) NOT NULL,
+  `bus_number` varchar(50) NOT NULL,
+  `bus_name` varchar(100) DEFAULT NULL,
+  `capacity` int(11) DEFAULT 40,
+  `driver_id` int(11) DEFAULT NULL,
+  `helper_id` int(11) DEFAULT NULL,
+  `start_time` time DEFAULT NULL,
+  `end_time` time DEFAULT NULL,
+  `status` enum('active','inactive') DEFAULT 'active'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+--
+-- Dumping data for table `transport_buses`
+--
+
+INSERT INTO `transport_buses` (`bus_id`, `bus_number`, `bus_name`, `capacity`, `driver_id`, `helper_id`, `start_time`, `end_time`, `status`) VALUES
+(3, 'AP03 1234', 'Madanapalle Bus', 45, 6, NULL, '07:30:00', '08:30:00', 'active'),
+(4, 'AP03 143143', 'Pungunur Bus', 44, 7, NULL, '00:00:00', '00:00:00', 'active');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `transport_bus_routes`
+--
+
+CREATE TABLE `transport_bus_routes` (
+  `id` int(11) NOT NULL,
+  `bus_id` int(11) NOT NULL,
+  `route_id` int(11) NOT NULL,
+  `is_primary` tinyint(1) DEFAULT 1
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `transport_live_location`
+--
+
+CREATE TABLE `transport_live_location` (
+  `location_id` int(11) NOT NULL,
+  `bus_id` int(11) DEFAULT NULL,
+  `latitude` decimal(10,8) DEFAULT NULL,
+  `longitude` decimal(11,8) DEFAULT NULL,
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `status` enum('not_started','running','completed') DEFAULT 'not_started'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+--
+-- Dumping data for table `transport_live_location`
+--
+
+INSERT INTO `transport_live_location` (`location_id`, `bus_id`, `latitude`, `longitude`, `updated_at`, `status`) VALUES
+(1, 3, '13.63055900', '78.48040600', '2026-06-22 00:46:09', 'running'),
+(10, 4, '13.63055900', '78.48040600', '2026-06-22 00:23:39', 'running');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `transport_routes`
+--
+
+CREATE TABLE `transport_routes` (
+  `route_id` int(11) NOT NULL,
+  `bus_id` int(11) NOT NULL,
+  `route_name` varchar(100) NOT NULL,
+  `start_time` time DEFAULT NULL,
+  `end_time` time DEFAULT NULL,
+  `status` enum('active','inactive') DEFAULT 'active',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `route_description` text DEFAULT NULL,
+  `route_color` varchar(20) DEFAULT '#2563eb'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+--
+-- Dumping data for table `transport_routes`
+--
+
+INSERT INTO `transport_routes` (`route_id`, `bus_id`, `route_name`, `start_time`, `end_time`, `status`, `created_at`, `route_description`, `route_color`) VALUES
+(5, 3, 'Evng Route', '00:00:00', '00:00:00', 'active', '2026-06-21 11:37:53', '', '#000000'),
+(6, 4, 'Punganur-Angallu', '00:00:00', '00:00:00', 'active', '2026-06-21 15:45:52', 'Highway Route', '#00ff40');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `transport_staff`
+--
+
+CREATE TABLE `transport_staff` (
+  `staff_id` int(11) NOT NULL,
+  `user_id` int(11) DEFAULT NULL,
+  `profile_photo` varchar(255) DEFAULT NULL,
+  `staff_type` enum('driver','helper') NOT NULL,
+  `full_name` varchar(100) NOT NULL,
+  `phone` varchar(20) DEFAULT NULL,
+  `license_number` varchar(50) DEFAULT NULL,
+  `status` enum('active','inactive') DEFAULT 'active',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `address` text DEFAULT NULL,
+  `emergency_contact` varchar(20) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+--
+-- Dumping data for table `transport_staff`
+--
+
+INSERT INTO `transport_staff` (`staff_id`, `user_id`, `profile_photo`, `staff_type`, `full_name`, `phone`, `license_number`, `status`, `created_at`, `address`, `emergency_contact`) VALUES
+(6, 28, NULL, 'driver', 'Jai Ballaya', '8790844365', 'LIC0001', 'active', '2026-06-21 05:34:39', '9-87, nagoor colongy, kuntrapakam(post)\r\ntirupati rural', '9191001912'),
+(7, 29, NULL, 'driver', 'Muthu', '9704290783', 'LIC0002', 'active', '2026-06-21 15:42:29', '9-87, nagoor colongy, kuntrapakam(post)\r\ntirupati rural', '9191001912');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `transport_stops`
+--
+
+CREATE TABLE `transport_stops` (
+  `stop_id` int(11) NOT NULL,
+  `stop_name` varchar(100) DEFAULT NULL,
+  `latitude` decimal(10,8) DEFAULT NULL,
+  `longitude` decimal(11,8) DEFAULT NULL,
+  `stop_order` int(11) DEFAULT NULL,
+  `route_id` int(11) NOT NULL,
+  `is_start` tinyint(1) DEFAULT 0,
+  `is_end` tinyint(1) DEFAULT 0,
+  `arrival_time` time DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+--
+-- Dumping data for table `transport_stops`
+--
+
+INSERT INTO `transport_stops` (`stop_id`, `stop_name`, `latitude`, `longitude`, `stop_order`, `route_id`, `is_start`, `is_end`, `arrival_time`) VALUES
+(20, 'Bengalruru', '12.95102922', '77.60302724', 1, 5, 1, 0, '00:00:00'),
+(21, 'Vellore', '12.90284370', '79.13562002', 2, 5, 0, 0, '00:00:00'),
+(22, 'Kadapa', '14.48255289', '78.76757802', 3, 5, 0, 0, '00:00:00'),
+(23, 'Tumakuru', '13.38106925', '77.04931621', 4, 5, 0, 1, '00:00:00'),
+(24, 'test 1', '13.62503383', '79.41886139', 1, 6, 1, 0, '00:00:00'),
+(25, 'test 2', '13.63871354', '79.44667053', 2, 6, 0, 0, '00:00:00'),
+(26, 'test 3', '13.64471901', '79.47962952', 3, 6, 0, 0, '00:00:00'),
+(27, 'test 4', '13.63604439', '79.48546600', 4, 6, 0, 0, '00:00:00'),
+(28, 'test5', '13.61569114', '79.47173309', 5, 6, 0, 0, '00:00:00'),
+(29, 'test 6', '13.58398997', '79.45353699', 6, 6, 0, 0, '00:00:00'),
+(30, 'test 7', '13.58799456', '79.41405487', 7, 6, 0, 0, '00:00:00'),
+(31, 'test  9', '13.60915103', '79.38473511', 8, 6, 0, 1, '00:00:00');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `transport_student_assignments`
+--
+
+CREATE TABLE `transport_student_assignments` (
+  `assignment_id` int(11) NOT NULL,
+  `student_id` int(11) DEFAULT NULL,
+  `bus_id` int(11) DEFAULT NULL,
+  `stop_id` int(11) DEFAULT NULL,
+  `assigned_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+--
+-- Dumping data for table `transport_student_assignments`
+--
+
+INSERT INTO `transport_student_assignments` (`assignment_id`, `student_id`, `bus_id`, `stop_id`, `assigned_at`) VALUES
+(1, 10, 4, 29, '2026-06-22 01:14:03'),
+(2, 12, 3, 23, '2026-06-22 01:14:13'),
+(4, 6, 3, 21, '2026-06-22 02:12:03');
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `users`
 --
 
@@ -1162,7 +1276,7 @@ CREATE TABLE `users` (
   `email` varchar(100) NOT NULL,
   `phone` varchar(20) NOT NULL,
   `password` varchar(255) NOT NULL,
-  `role` enum('admin','teacher','student','parent') NOT NULL,
+  `role` enum('admin','teacher','student','parent','driver','helper') NOT NULL,
   `profile_photo` varchar(255) DEFAULT 'default.png',
   `theme_preference` varchar(20) DEFAULT 'light',
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
@@ -1174,7 +1288,7 @@ CREATE TABLE `users` (
 --
 
 INSERT INTO `users` (`id`, `full_name`, `email`, `phone`, `password`, `role`, `profile_photo`, `theme_preference`, `created_at`, `admin_id`) VALUES
-(16, 'Abdul Karim S', 'adbul@gmail.com', '900000001', '$2y$10$FdCqTIOuk8LagT9sj8MuyOrW1jyQcBU9I6Xrhp3QxkR2gh0tGm0Ze', 'student', 'time_1781417055.png', 'light', '2026-06-11 05:30:45', NULL),
+(16, 'Abdul Karim S', 'adbul@gmail.com', '9121212121', '$2y$10$FdCqTIOuk8LagT9sj8MuyOrW1jyQcBU9I6Xrhp3QxkR2gh0tGm0Ze', 'student', 'time_1782088877.jpg', 'light', '2026-06-11 05:30:45', NULL),
 (17, 'Akash S', 'akash@gmail.com', '9704290782', '$2y$10$taXNmdTqTfpGljHuRwI37.bznLJB/w.9kluXVhRJvUCnOaLknVnDm', 'student', 'default.png', 'light', '2026-06-11 05:31:26', NULL),
 (18, 'Akshaya G', 'akshaya@gmail.com', '9704290782', '$2y$10$VMxngb68vOnq0JdeZNKN1.RdzbHyvd19wW8ROpoBSh0Al8bxQIz92', 'student', 'default.png', 'light', '2026-06-11 05:32:15', NULL),
 (19, 'Aruna N', 'aruna@gmail.com', '8790844365', '$2y$10$jJ3lhIZTOrr4uRlr1meWpuYFQ2YInTBO4ej2pDFvmix5rxgS1FJ7.', 'student', 'default.png', 'light', '2026-06-11 05:33:02', NULL),
@@ -1183,8 +1297,12 @@ INSERT INTO `users` (`id`, `full_name`, `email`, `phone`, `password`, `role`, `p
 (22, 'Ashraf Vali', 'ashraf@gmail.com', '6281025228', '$2y$10$4rxxlZrJ472wPw29.HDTEOU91Mc9dCA/ISq/MmupjUpAQqTAOqn4.', 'admin', 'default.png', 'light', '2026-06-11 05:35:29', 'ADM0002'),
 (23, 'E. Rajesh', 'rajeshsir@gmail.com', '6281025228', '$2y$10$m8uALctogvVtBU7G7tF/aOat9nys35bJJ26ydR94lAWOqtyu8yUsy', 'teacher', 'default.png', 'light', '2026-06-11 05:36:14', NULL),
 (24, 'Gayatri Mam', 'gayatri@gmail.com', '9704290782', '$2y$10$XlIpngx6lyvjyOFQjkI2/OVGzisYUOO7aKlqRFwuLX13.0RlBoLwm', 'teacher', 'default.png', 'light', '2026-06-11 05:36:55', NULL),
-(26, 'R.Baba', 'toearnviv@gmail.com', '99', '$2y$10$CgTFCNe2TTPjIbKRofQnIuPdFlGmxXXp5yjDJIJcuOT9Tdi2gRmk2', 'admin', 'default.png', 'light', '2026-06-13 00:55:33', 'ADM0001'),
-(27, 'Shaik Abdul Father ', 'rbabafakhrudhin@gmail.com', '9709238333', '$2y$10$ja3fXSPibiH4UBxmWZwyEOWRgCxPX1FTr1xdurxhdS6Lp0xEwZhL6', 'parent', 'default.png', 'light', '2026-06-19 05:54:31', '');
+(26, 'R.Baba', 'toearnviv@gmail.com', '9704290783', '$2y$10$CgTFCNe2TTPjIbKRofQnIuPdFlGmxXXp5yjDJIJcuOT9Tdi2gRmk2', 'admin', 'default.png', 'light', '2026-06-13 00:55:33', 'ADM0001'),
+(27, 'Shaik Abdul Father ', 'rbabafakhrudhin@gmail.com', '9709238333', '$2y$10$ja3fXSPibiH4UBxmWZwyEOWRgCxPX1FTr1xdurxhdS6Lp0xEwZhL6', 'parent', 'default.png', 'light', '2026-06-19 05:54:31', ''),
+(28, 'Jai Ballaya', 'driver@gmail.com', '8790844365', '$2y$10$S376JFIqmFPSCU6a0B6svOZgORL/aimhS2mlpo33Y9SAgHiTxWFma', 'driver', 'default.png', 'light', '2026-06-21 05:34:39', NULL),
+(29, 'Muthu', 'driver2@gmail.com', '9704290783', '$2y$10$.McnKlrxXx.FryW7dFVRReHURJ3kOAQvdIUuW9jiFkI5YuuwCLAay', 'driver', 'default.png', 'light', '2026-06-21 15:42:29', NULL),
+(30, 'R.Baba', 'teacher@gmail.com', '9100911919', '$2y$10$PrSjKr2PqrtK9lhwfFey/OfdP.RwDhWQzGloAew9yzYRPvcpvllfa', 'teacher', 'default.png', 'light', '2026-06-22 00:03:49', NULL),
+(31, 'Raju', 'raju@gmail.com', '9191000000', '$2y$10$bOJJGFi4MNxO04cwJr/LL.Q3Zbf1PiPZrMrVvuPoVVLum3ux79eZi', 'student', 'default.png', 'light', '2026-06-22 00:05:33', NULL);
 
 -- --------------------------------------------------------
 
@@ -1227,27 +1345,6 @@ ALTER TABLE `attendance_records`
   ADD KEY `idx_status` (`status`);
 
 --
--- Indexes for table `buses`
---
-ALTER TABLE `buses`
-  ADD PRIMARY KEY (`bus_id`),
-  ADD UNIQUE KEY `unique_bus_number` (`bus_number`),
-  ADD UNIQUE KEY `unique_registration_number` (`registration_number`),
-  ADD KEY `idx_buses_driver` (`driver_id`),
-  ADD KEY `idx_buses_helper` (`helper_id`);
-
---
--- Indexes for table `bus_assignments`
---
-ALTER TABLE `bus_assignments`
-  ADD PRIMARY KEY (`assignment_id`),
-  ADD KEY `idx_bus_route` (`bus_id`,`route_id`),
-  ADD KEY `fk_bus_assignments_route` (`route_id`),
-  ADD KEY `fk_bus_assignments_pickup` (`pickup_stop_id`),
-  ADD KEY `fk_bus_assignments_drop` (`drop_stop_id`),
-  ADD KEY `idx_bus_assignments_student` (`student_id`);
-
---
 -- Indexes for table `classes`
 --
 ALTER TABLE `classes`
@@ -1256,62 +1353,34 @@ ALTER TABLE `classes`
   ADD UNIQUE KEY `unique_class_code` (`class_code`);
 
 --
--- Indexes for table `drivers`
---
-ALTER TABLE `drivers`
-  ADD PRIMARY KEY (`driver_id`),
-  ADD UNIQUE KEY `unique_license_number` (`license_number`);
-
---
 -- Indexes for table `exams`
 --
 ALTER TABLE `exams`
-  ADD PRIMARY KEY (`exam_id`),
-  ADD UNIQUE KEY `unique_exam_code` (`exam_code`),
-  ADD KEY `idx_exam_status` (`status`),
-  ADD KEY `fk_exams_type` (`exam_type_id`),
-  ADD KEY `idx_exams_class_section` (`class_id`,`section_id`),
-  ADD KEY `idx_exams_date` (`exam_date`);
+  ADD PRIMARY KEY (`exam_id`);
 
 --
--- Indexes for table `exam_halls`
+-- Indexes for table `exam_subjects`
 --
-ALTER TABLE `exam_halls`
-  ADD PRIMARY KEY (`hall_id`);
+ALTER TABLE `exam_subjects`
+  ADD PRIMARY KEY (`exam_subject_id`),
+  ADD KEY `exam_id` (`exam_id`),
+  ADD KEY `subject_id` (`subject_id`);
 
 --
--- Indexes for table `exam_hall_allocations`
+-- Indexes for table `fee_payments`
 --
-ALTER TABLE `exam_hall_allocations`
-  ADD PRIMARY KEY (`allocation_id`),
-  ADD KEY `idx_hall_schedule` (`schedule_id`,`hall_id`),
-  ADD KEY `fk_exam_hall_alloc_hall` (`hall_id`),
-  ADD KEY `fk_exam_hall_alloc_student` (`student_id`);
+ALTER TABLE `fee_payments`
+  ADD PRIMARY KEY (`payment_id`),
+  ADD KEY `created_by` (`created_by`),
+  ADD KEY `idx_fee_payments_date` (`payment_date`),
+  ADD KEY `idx_fee_payments_studentfee` (`student_fee_id`);
 
 --
--- Indexes for table `exam_invigilators`
+-- Indexes for table `fee_structures`
 --
-ALTER TABLE `exam_invigilators`
-  ADD PRIMARY KEY (`invigilator_id`),
-  ADD UNIQUE KEY `unique_schedule_teacher` (`schedule_id`,`teacher_id`),
-  ADD KEY `fk_exam_invigilators_teacher` (`teacher_id`);
-
---
--- Indexes for table `exam_schedule`
---
-ALTER TABLE `exam_schedule`
-  ADD PRIMARY KEY (`schedule_id`),
-  ADD KEY `idx_exam_schedule_lookup` (`exam_id`,`class_id`,`section_id`,`exam_date`),
-  ADD KEY `fk_exam_schedule_class` (`class_id`),
-  ADD KEY `fk_exam_schedule_section` (`section_id`),
-  ADD KEY `fk_exam_schedule_subject` (`subject_id`);
-
---
--- Indexes for table `exam_types`
---
-ALTER TABLE `exam_types`
-  ADD PRIMARY KEY (`exam_type_id`),
-  ADD UNIQUE KEY `unique_exam_type` (`type_name`);
+ALTER TABLE `fee_structures`
+  ADD PRIMARY KEY (`fee_structure_id`),
+  ADD KEY `class_id` (`class_id`);
 
 --
 -- Indexes for table `grading_system`
@@ -1319,12 +1388,6 @@ ALTER TABLE `exam_types`
 ALTER TABLE `grading_system`
   ADD PRIMARY KEY (`grading_id`),
   ADD KEY `idx_grade_range` (`min_marks`,`max_marks`);
-
---
--- Indexes for table `helpers`
---
-ALTER TABLE `helpers`
-  ADD PRIMARY KEY (`helper_id`);
 
 --
 -- Indexes for table `notifications`
@@ -1394,21 +1457,13 @@ ALTER TABLE `permissions`
 -- Indexes for table `results`
 --
 ALTER TABLE `results`
-  ADD PRIMARY KEY (`result_id`),
-  ADD UNIQUE KEY `unique_result_exam` (`exam_id`),
-  ADD KEY `idx_result_scope` (`class_id`,`section_id`,`academic_year`,`semester`),
-  ADD KEY `idx_result_status` (`status`),
-  ADD KEY `fk_results_section` (`section_id`);
+  ADD PRIMARY KEY (`result_id`);
 
 --
--- Indexes for table `result_entries`
+-- Indexes for table `result_marks`
 --
-ALTER TABLE `result_entries`
-  ADD PRIMARY KEY (`entry_id`),
-  ADD UNIQUE KEY `unique_result_student_subject` (`result_id`,`student_id`,`subject_id`),
-  ADD KEY `idx_result_student` (`student_id`),
-  ADD KEY `idx_result_subject` (`subject_id`),
-  ADD KEY `fk_result_entries_teacher` (`teacher_id`);
+ALTER TABLE `result_marks`
+  ADD PRIMARY KEY (`mark_id`);
 
 --
 -- Indexes for table `role_permissions`
@@ -1420,31 +1475,11 @@ ALTER TABLE `role_permissions`
   ADD KEY `idx_permission` (`permission_id`);
 
 --
--- Indexes for table `routes`
---
-ALTER TABLE `routes`
-  ADD PRIMARY KEY (`route_id`);
-
---
--- Indexes for table `route_stops`
---
-ALTER TABLE `route_stops`
-  ADD PRIMARY KEY (`route_stop_id`),
-  ADD UNIQUE KEY `unique_route_stop_order` (`route_id`,`stop_order`),
-  ADD KEY `fk_route_stops_stop` (`stop_id`);
-
---
 -- Indexes for table `sections`
 --
 ALTER TABLE `sections`
   ADD PRIMARY KEY (`section_id`),
   ADD UNIQUE KEY `unique_section_per_class` (`class_id`,`section_code`);
-
---
--- Indexes for table `stops`
---
-ALTER TABLE `stops`
-  ADD PRIMARY KEY (`stop_id`);
 
 --
 -- Indexes for table `students`
@@ -1455,6 +1490,15 @@ ALTER TABLE `students`
   ADD UNIQUE KEY `student_id_2` (`student_id`),
   ADD UNIQUE KEY `student_id_3` (`student_id`),
   ADD KEY `user_id` (`user_id`);
+
+--
+-- Indexes for table `student_fees`
+--
+ALTER TABLE `student_fees`
+  ADD PRIMARY KEY (`student_fee_id`),
+  ADD KEY `fee_structure_id` (`fee_structure_id`),
+  ADD KEY `idx_student_fees_student` (`student_id`),
+  ADD KEY `idx_student_fees_status` (`payment_status`);
 
 --
 -- Indexes for table `subjects`
@@ -1505,6 +1549,58 @@ ALTER TABLE `timetable_entries`
   ADD PRIMARY KEY (`entry_id`);
 
 --
+-- Indexes for table `transport_buses`
+--
+ALTER TABLE `transport_buses`
+  ADD PRIMARY KEY (`bus_id`),
+  ADD KEY `driver_id` (`driver_id`),
+  ADD KEY `helper_id` (`helper_id`);
+
+--
+-- Indexes for table `transport_bus_routes`
+--
+ALTER TABLE `transport_bus_routes`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `bus_id` (`bus_id`),
+  ADD KEY `route_id` (`route_id`);
+
+--
+-- Indexes for table `transport_live_location`
+--
+ALTER TABLE `transport_live_location`
+  ADD PRIMARY KEY (`location_id`),
+  ADD UNIQUE KEY `bus_id` (`bus_id`);
+
+--
+-- Indexes for table `transport_routes`
+--
+ALTER TABLE `transport_routes`
+  ADD PRIMARY KEY (`route_id`),
+  ADD UNIQUE KEY `bus_id` (`bus_id`),
+  ADD UNIQUE KEY `bus_id_2` (`bus_id`);
+
+--
+-- Indexes for table `transport_staff`
+--
+ALTER TABLE `transport_staff`
+  ADD PRIMARY KEY (`staff_id`),
+  ADD KEY `user_id` (`user_id`);
+
+--
+-- Indexes for table `transport_stops`
+--
+ALTER TABLE `transport_stops`
+  ADD PRIMARY KEY (`stop_id`),
+  ADD KEY `fk_route_stop` (`route_id`);
+
+--
+-- Indexes for table `transport_student_assignments`
+--
+ALTER TABLE `transport_student_assignments`
+  ADD PRIMARY KEY (`assignment_id`),
+  ADD KEY `stop_id` (`stop_id`);
+
+--
 -- Indexes for table `users`
 --
 ALTER TABLE `users`
@@ -1537,64 +1633,34 @@ ALTER TABLE `attendance_records`
   MODIFY `record_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=31;
 
 --
--- AUTO_INCREMENT for table `buses`
---
-ALTER TABLE `buses`
-  MODIFY `bus_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
-
---
--- AUTO_INCREMENT for table `bus_assignments`
---
-ALTER TABLE `bus_assignments`
-  MODIFY `assignment_id` int(11) NOT NULL AUTO_INCREMENT;
-
---
 -- AUTO_INCREMENT for table `classes`
 --
 ALTER TABLE `classes`
   MODIFY `class_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
 
 --
--- AUTO_INCREMENT for table `drivers`
---
-ALTER TABLE `drivers`
-  MODIFY `driver_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
-
---
 -- AUTO_INCREMENT for table `exams`
 --
 ALTER TABLE `exams`
-  MODIFY `exam_id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `exam_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
--- AUTO_INCREMENT for table `exam_halls`
+-- AUTO_INCREMENT for table `exam_subjects`
 --
-ALTER TABLE `exam_halls`
-  MODIFY `hall_id` int(11) NOT NULL AUTO_INCREMENT;
+ALTER TABLE `exam_subjects`
+  MODIFY `exam_subject_id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
--- AUTO_INCREMENT for table `exam_hall_allocations`
+-- AUTO_INCREMENT for table `fee_payments`
 --
-ALTER TABLE `exam_hall_allocations`
-  MODIFY `allocation_id` int(11) NOT NULL AUTO_INCREMENT;
+ALTER TABLE `fee_payments`
+  MODIFY `payment_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
--- AUTO_INCREMENT for table `exam_invigilators`
+-- AUTO_INCREMENT for table `fee_structures`
 --
-ALTER TABLE `exam_invigilators`
-  MODIFY `invigilator_id` int(11) NOT NULL AUTO_INCREMENT;
-
---
--- AUTO_INCREMENT for table `exam_schedule`
---
-ALTER TABLE `exam_schedule`
-  MODIFY `schedule_id` int(11) NOT NULL AUTO_INCREMENT;
-
---
--- AUTO_INCREMENT for table `exam_types`
---
-ALTER TABLE `exam_types`
-  MODIFY `exam_type_id` int(11) NOT NULL AUTO_INCREMENT;
+ALTER TABLE `fee_structures`
+  MODIFY `fee_structure_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `grading_system`
@@ -1603,28 +1669,22 @@ ALTER TABLE `grading_system`
   MODIFY `grading_id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
--- AUTO_INCREMENT for table `helpers`
---
-ALTER TABLE `helpers`
-  MODIFY `helper_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
-
---
 -- AUTO_INCREMENT for table `notifications`
 --
 ALTER TABLE `notifications`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT for table `notification_reads`
 --
 ALTER TABLE `notification_reads`
-  MODIFY `read_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
+  MODIFY `read_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
 
 --
 -- AUTO_INCREMENT for table `notification_targets`
 --
 ALTER TABLE `notification_targets`
-  MODIFY `target_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `target_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT for table `notification_templates`
@@ -1654,37 +1714,25 @@ ALTER TABLE `period_templates`
 -- AUTO_INCREMENT for table `permissions`
 --
 ALTER TABLE `permissions`
-  MODIFY `permission_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=99;
+  MODIFY `permission_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=123;
 
 --
 -- AUTO_INCREMENT for table `results`
 --
 ALTER TABLE `results`
-  MODIFY `result_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `result_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
--- AUTO_INCREMENT for table `result_entries`
+-- AUTO_INCREMENT for table `result_marks`
 --
-ALTER TABLE `result_entries`
-  MODIFY `entry_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+ALTER TABLE `result_marks`
+  MODIFY `mark_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `role_permissions`
 --
 ALTER TABLE `role_permissions`
-  MODIFY `role_permission_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=758;
-
---
--- AUTO_INCREMENT for table `routes`
---
-ALTER TABLE `routes`
-  MODIFY `route_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
-
---
--- AUTO_INCREMENT for table `route_stops`
---
-ALTER TABLE `route_stops`
-  MODIFY `route_stop_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `role_permission_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=943;
 
 --
 -- AUTO_INCREMENT for table `sections`
@@ -1693,16 +1741,16 @@ ALTER TABLE `sections`
   MODIFY `section_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
 
 --
--- AUTO_INCREMENT for table `stops`
---
-ALTER TABLE `stops`
-  MODIFY `stop_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
-
---
 -- AUTO_INCREMENT for table `students`
 --
 ALTER TABLE `students`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
+
+--
+-- AUTO_INCREMENT for table `student_fees`
+--
+ALTER TABLE `student_fees`
+  MODIFY `student_fee_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
 
 --
 -- AUTO_INCREMENT for table `subjects`
@@ -1714,7 +1762,7 @@ ALTER TABLE `subjects`
 -- AUTO_INCREMENT for table `teachers`
 --
 ALTER TABLE `teachers`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
 
 --
 -- AUTO_INCREMENT for table `teacher_assignments`
@@ -1741,10 +1789,52 @@ ALTER TABLE `timetable_entries`
   MODIFY `entry_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=23;
 
 --
+-- AUTO_INCREMENT for table `transport_buses`
+--
+ALTER TABLE `transport_buses`
+  MODIFY `bus_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+
+--
+-- AUTO_INCREMENT for table `transport_bus_routes`
+--
+ALTER TABLE `transport_bus_routes`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `transport_live_location`
+--
+ALTER TABLE `transport_live_location`
+  MODIFY `location_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=44;
+
+--
+-- AUTO_INCREMENT for table `transport_routes`
+--
+ALTER TABLE `transport_routes`
+  MODIFY `route_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+
+--
+-- AUTO_INCREMENT for table `transport_staff`
+--
+ALTER TABLE `transport_staff`
+  MODIFY `staff_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+
+--
+-- AUTO_INCREMENT for table `transport_stops`
+--
+ALTER TABLE `transport_stops`
+  MODIFY `stop_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=32;
+
+--
+-- AUTO_INCREMENT for table `transport_student_assignments`
+--
+ALTER TABLE `transport_student_assignments`
+  MODIFY `assignment_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+
+--
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=28;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=32;
 
 --
 -- AUTO_INCREMENT for table `user_permissions`
@@ -1772,53 +1862,24 @@ ALTER TABLE `attendance_records`
   ADD CONSTRAINT `attendance_records_ibfk_1` FOREIGN KEY (`attendance_id`) REFERENCES `attendance` (`attendance_id`) ON DELETE CASCADE;
 
 --
--- Constraints for table `buses`
+-- Constraints for table `exam_subjects`
 --
-ALTER TABLE `buses`
-  ADD CONSTRAINT `fk_buses_driver` FOREIGN KEY (`driver_id`) REFERENCES `drivers` (`driver_id`) ON DELETE SET NULL ON UPDATE CASCADE,
-  ADD CONSTRAINT `fk_buses_helper` FOREIGN KEY (`helper_id`) REFERENCES `helpers` (`helper_id`) ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE `exam_subjects`
+  ADD CONSTRAINT `exam_subjects_ibfk_1` FOREIGN KEY (`exam_id`) REFERENCES `exams` (`exam_id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `exam_subjects_ibfk_2` FOREIGN KEY (`subject_id`) REFERENCES `subjects` (`subject_id`) ON DELETE CASCADE;
 
 --
--- Constraints for table `bus_assignments`
+-- Constraints for table `fee_payments`
 --
-ALTER TABLE `bus_assignments`
-  ADD CONSTRAINT `fk_bus_assignments_bus` FOREIGN KEY (`bus_id`) REFERENCES `buses` (`bus_id`),
-  ADD CONSTRAINT `fk_bus_assignments_drop` FOREIGN KEY (`drop_stop_id`) REFERENCES `stops` (`stop_id`) ON DELETE SET NULL,
-  ADD CONSTRAINT `fk_bus_assignments_pickup` FOREIGN KEY (`pickup_stop_id`) REFERENCES `stops` (`stop_id`) ON DELETE SET NULL,
-  ADD CONSTRAINT `fk_bus_assignments_route` FOREIGN KEY (`route_id`) REFERENCES `routes` (`route_id`),
-  ADD CONSTRAINT `fk_bus_assignments_student` FOREIGN KEY (`student_id`) REFERENCES `students` (`id`) ON DELETE CASCADE;
+ALTER TABLE `fee_payments`
+  ADD CONSTRAINT `fee_payments_ibfk_1` FOREIGN KEY (`student_fee_id`) REFERENCES `student_fees` (`student_fee_id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fee_payments_ibfk_2` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL;
 
 --
--- Constraints for table `exams`
+-- Constraints for table `fee_structures`
 --
-ALTER TABLE `exams`
-  ADD CONSTRAINT `fk_exams_class` FOREIGN KEY (`class_id`) REFERENCES `classes` (`class_id`) ON DELETE SET NULL,
-  ADD CONSTRAINT `fk_exams_section` FOREIGN KEY (`section_id`) REFERENCES `sections` (`section_id`) ON DELETE SET NULL,
-  ADD CONSTRAINT `fk_exams_type` FOREIGN KEY (`exam_type_id`) REFERENCES `exam_types` (`exam_type_id`) ON DELETE SET NULL;
-
---
--- Constraints for table `exam_hall_allocations`
---
-ALTER TABLE `exam_hall_allocations`
-  ADD CONSTRAINT `fk_exam_hall_alloc_hall` FOREIGN KEY (`hall_id`) REFERENCES `exam_halls` (`hall_id`),
-  ADD CONSTRAINT `fk_exam_hall_alloc_schedule` FOREIGN KEY (`schedule_id`) REFERENCES `exam_schedule` (`schedule_id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `fk_exam_hall_alloc_student` FOREIGN KEY (`student_id`) REFERENCES `students` (`id`) ON DELETE CASCADE;
-
---
--- Constraints for table `exam_invigilators`
---
-ALTER TABLE `exam_invigilators`
-  ADD CONSTRAINT `fk_exam_invigilators_schedule` FOREIGN KEY (`schedule_id`) REFERENCES `exam_schedule` (`schedule_id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `fk_exam_invigilators_teacher` FOREIGN KEY (`teacher_id`) REFERENCES `teachers` (`id`) ON DELETE CASCADE;
-
---
--- Constraints for table `exam_schedule`
---
-ALTER TABLE `exam_schedule`
-  ADD CONSTRAINT `fk_exam_schedule_class` FOREIGN KEY (`class_id`) REFERENCES `classes` (`class_id`),
-  ADD CONSTRAINT `fk_exam_schedule_exam` FOREIGN KEY (`exam_id`) REFERENCES `exams` (`exam_id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `fk_exam_schedule_section` FOREIGN KEY (`section_id`) REFERENCES `sections` (`section_id`) ON DELETE SET NULL,
-  ADD CONSTRAINT `fk_exam_schedule_subject` FOREIGN KEY (`subject_id`) REFERENCES `subjects` (`subject_id`);
+ALTER TABLE `fee_structures`
+  ADD CONSTRAINT `fee_structures_ibfk_1` FOREIGN KEY (`class_id`) REFERENCES `classes` (`class_id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `parents`
@@ -1833,34 +1894,10 @@ ALTER TABLE `periods`
   ADD CONSTRAINT `periods_ibfk_1` FOREIGN KEY (`template_id`) REFERENCES `period_templates` (`template_id`) ON DELETE CASCADE;
 
 --
--- Constraints for table `results`
---
-ALTER TABLE `results`
-  ADD CONSTRAINT `fk_results_exam` FOREIGN KEY (`exam_id`) REFERENCES `exams` (`exam_id`) ON DELETE SET NULL,
-  ADD CONSTRAINT `fk_results_class` FOREIGN KEY (`class_id`) REFERENCES `classes` (`class_id`),
-  ADD CONSTRAINT `fk_results_section` FOREIGN KEY (`section_id`) REFERENCES `sections` (`section_id`);
-
---
--- Constraints for table `result_entries`
---
-ALTER TABLE `result_entries`
-  ADD CONSTRAINT `fk_result_entries_result` FOREIGN KEY (`result_id`) REFERENCES `results` (`result_id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `fk_result_entries_student` FOREIGN KEY (`student_id`) REFERENCES `students` (`id`),
-  ADD CONSTRAINT `fk_result_entries_subject` FOREIGN KEY (`subject_id`) REFERENCES `subjects` (`subject_id`),
-  ADD CONSTRAINT `fk_result_entries_teacher` FOREIGN KEY (`teacher_id`) REFERENCES `teachers` (`id`) ON DELETE SET NULL;
-
---
 -- Constraints for table `role_permissions`
 --
 ALTER TABLE `role_permissions`
   ADD CONSTRAINT `fk_role_permissions_permission` FOREIGN KEY (`permission_id`) REFERENCES `permissions` (`permission_id`) ON DELETE CASCADE;
-
---
--- Constraints for table `route_stops`
---
-ALTER TABLE `route_stops`
-  ADD CONSTRAINT `fk_route_stops_route` FOREIGN KEY (`route_id`) REFERENCES `routes` (`route_id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `fk_route_stops_stop` FOREIGN KEY (`stop_id`) REFERENCES `stops` (`stop_id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `sections`
@@ -1875,6 +1912,13 @@ ALTER TABLE `students`
   ADD CONSTRAINT `students_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
 
 --
+-- Constraints for table `student_fees`
+--
+ALTER TABLE `student_fees`
+  ADD CONSTRAINT `student_fees_ibfk_1` FOREIGN KEY (`student_id`) REFERENCES `students` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `student_fees_ibfk_2` FOREIGN KEY (`fee_structure_id`) REFERENCES `fee_structures` (`fee_structure_id`) ON DELETE CASCADE;
+
+--
 -- Constraints for table `teachers`
 --
 ALTER TABLE `teachers`
@@ -1885,6 +1929,51 @@ ALTER TABLE `teachers`
 --
 ALTER TABLE `teacher_attendance`
   ADD CONSTRAINT `fk_teacher_attendance_teacher` FOREIGN KEY (`teacher_id`) REFERENCES `teachers` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `transport_buses`
+--
+ALTER TABLE `transport_buses`
+  ADD CONSTRAINT `transport_buses_ibfk_1` FOREIGN KEY (`driver_id`) REFERENCES `transport_staff` (`staff_id`),
+  ADD CONSTRAINT `transport_buses_ibfk_2` FOREIGN KEY (`helper_id`) REFERENCES `transport_staff` (`staff_id`);
+
+--
+-- Constraints for table `transport_bus_routes`
+--
+ALTER TABLE `transport_bus_routes`
+  ADD CONSTRAINT `transport_bus_routes_ibfk_1` FOREIGN KEY (`bus_id`) REFERENCES `transport_buses` (`bus_id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `transport_bus_routes_ibfk_2` FOREIGN KEY (`route_id`) REFERENCES `transport_routes` (`route_id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `transport_live_location`
+--
+ALTER TABLE `transport_live_location`
+  ADD CONSTRAINT `fk_live_bus` FOREIGN KEY (`bus_id`) REFERENCES `transport_buses` (`bus_id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `transport_routes`
+--
+ALTER TABLE `transport_routes`
+  ADD CONSTRAINT `transport_routes_ibfk_1` FOREIGN KEY (`bus_id`) REFERENCES `transport_buses` (`bus_id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `transport_staff`
+--
+ALTER TABLE `transport_staff`
+  ADD CONSTRAINT `fk_transport_staff_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `transport_staff_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL;
+
+--
+-- Constraints for table `transport_stops`
+--
+ALTER TABLE `transport_stops`
+  ADD CONSTRAINT `fk_route_stop` FOREIGN KEY (`route_id`) REFERENCES `transport_routes` (`route_id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `transport_student_assignments`
+--
+ALTER TABLE `transport_student_assignments`
+  ADD CONSTRAINT `transport_student_assignments_ibfk_1` FOREIGN KEY (`stop_id`) REFERENCES `transport_stops` (`stop_id`) ON DELETE SET NULL;
 
 --
 -- Constraints for table `user_permissions`

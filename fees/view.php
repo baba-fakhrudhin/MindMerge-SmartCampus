@@ -9,131 +9,67 @@ if(
 !is_numeric($_GET['id'])
 ){
 
-header('Location:index.php');
+header('Location:index.php?error=not_found');
 exit;
 
 }
 
-$result_id = (int)$_GET['id'];
+$fee_structure_id = (int)$_GET['id'];
 
-$resultQuery = mysqli_query(
+$feeQuery = mysqli_query(
 
 $conn,
 
 "SELECT
 
-r.*,
+fs.*,
 
-e.exam_name,
-e.exam_type,
-e.total_marks,
-e.exam_date,
-e.start_time,
-e.end_time,
+c.class_name
 
-c.class_name,
+FROM fee_structures fs
 
-s.section_name
+INNER JOIN classes c
+ON fs.class_id=c.class_id
 
-FROM results r
-
-INNER JOIN exams e
-ON r.exam_id=e.exam_id
-
-LEFT JOIN classes c
-ON r.class_id=c.class_id
-
-LEFT JOIN sections s
-ON r.section_id=s.section_id
-
-WHERE r.result_id='$result_id'
+WHERE fs.fee_structure_id='$fee_structure_id'
 
 LIMIT 1"
 
 );
 
-if(mysqli_num_rows($resultQuery)==0){
+if(mysqli_num_rows($feeQuery)==0){
 
 header('Location:index.php?error=not_found');
 exit;
 
 }
 
-$result =
+$fee =
 mysqli_fetch_assoc(
-$resultQuery
-);
-if(
-isset($_GET['publish'])
-&&
-$_GET['publish']==1
-){
-
-$markCheck = mysqli_fetch_assoc(
-
-mysqli_query(
-
-$conn,
-
-"SELECT COUNT(*) total
-
-FROM result_marks
-
-WHERE result_id='$result_id'"
-
-)
-
+$feeQuery
 );
 
-if($markCheck['total'] > 0){
-
-mysqli_query(
-
-$conn,
-
-"UPDATE results
-
-SET
-
-status='published',
-published_at=NOW()
-
-WHERE result_id='$result_id'"
-
-);
-
-}
-
-header(
-'Location:view.php?id=' .
-$result_id
-);
-
-exit;
-
-}
-
-$marksQuery = mysqli_query(
+$assignedStudents = mysqli_query(
 
 $conn,
 
 "SELECT
 
-rm.*,
+sf.*,
 
-st.student_id,
+s.student_id,
 
 u.full_name
 
-FROM result_marks rm
+FROM student_fees sf
 
-INNER JOIN students st
-ON rm.student_id=st.id
+INNER JOIN students s
+ON sf.student_id=s.id
 
 INNER JOIN users u
-ON st.user_id=u.id
+ON s.user_id=u.id
 
-WHERE rm.result_id='$result_id'
+WHERE sf.fee_structure_id='$fee_structure_id'
 
 ORDER BY u.full_name ASC"
 
@@ -149,21 +85,31 @@ $conn,
 
 COUNT(*) total_students,
 
-AVG(marks_obtained) avg_marks,
+IFNULL(
+SUM(amount),
+0
+) total_amount,
 
-MAX(marks_obtained) highest_marks,
+IFNULL(
+SUM(paid_amount),
+0
+) total_paid,
 
-MIN(marks_obtained) lowest_marks
+IFNULL(
+SUM(balance_amount),
+0
+) total_balance
 
-FROM result_marks
+FROM student_fees
 
-WHERE result_id='$result_id'"
+WHERE fee_structure_id='$fee_structure_id'"
 
 )
 
 );
 
 ?>
+
 <!DOCTYPE html>
 
 <html lang="en">
@@ -177,7 +123,7 @@ name="viewport"
 content="width=device-width, initial-scale=1.0">
 
 <title>
-View Result
+View Fee Structure
 </title>
 
 <link
@@ -215,7 +161,7 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
 <div>
 
 <h1>
-Result Details
+Fee Structure Details
 </h1>
 
 <p>
@@ -223,7 +169,7 @@ Result Details
 <?php
 
 echo htmlspecialchars(
-$result['exam_name']
+$fee['fee_name']
 );
 
 ?>
@@ -238,6 +184,7 @@ display:flex;
 gap:10px;
 flex-wrap:wrap;
 ">
+
 <a
 href="index.php"
 class="btn">
@@ -247,52 +194,16 @@ class="btn">
 Back
 
 </a>
+
 <a
-href="export_csv.php?id=<?php echo $result_id; ?>"
+href="edit.php?id=<?php echo $fee_structure_id; ?>"
 class="btn btn-primary">
-
-CSV
-
-</a>
-
-<a
-href="export_excel.php?id=<?php echo $result_id; ?>"
-class="btn btn-primary">
-
-Excel
-
-</a>
-
-<a
-href="report.php?id=<?php echo $result_id; ?>"
-class="btn btn-primary">
-
-<i class="fa-solid fa-print"></i>
-
-Print Report
-
-</a>
-<a
-href="mark.php?id=<?php echo $result_id; ?>"
-class="btn">
 
 <i class="fa-solid fa-pen"></i>
 
-Edit Marks
+Edit
 
 </a>
-<?php if($result['status']!='published'){ ?>
-
-<a
-href="?id=<?php echo $result_id; ?>&publish=1"
-class="btn btn-primary"
-onclick="return confirm('Publish result?');">
-
-Publish
-
-</a>
-
-<?php } ?>
 
 </div>
 
@@ -305,7 +216,7 @@ Publish
 <div class="dashboard-card">
 
 <h3>
-Students
+Assigned Students
 </h3>
 
 <h2>
@@ -320,18 +231,19 @@ echo (int)$stats['total_students'];
 
 </div>
 
+
 <div class="dashboard-card">
 
 <h3>
-Average
+Total Fee Amount
 </h3>
 
 <h2>
 
-<?php
+₹<?php
 
 echo number_format(
-(float)$stats['avg_marks'],
+$stats['total_amount'],
 2
 );
 
@@ -344,15 +256,15 @@ echo number_format(
 <div class="dashboard-card">
 
 <h3>
-Highest
+Collected
 </h3>
 
 <h2>
 
-<?php
+₹<?php
 
 echo number_format(
-(float)$stats['highest_marks'],
+$stats['total_paid'],
 2
 );
 
@@ -365,15 +277,15 @@ echo number_format(
 <div class="dashboard-card">
 
 <h3>
-Lowest
+Pending
 </h3>
 
 <h2>
 
-<?php
+₹<?php
 
 echo number_format(
-(float)$stats['lowest_marks'],
+$stats['total_balance'],
 2
 );
 
@@ -385,14 +297,14 @@ echo number_format(
 
 </div>
 
-<!-- Exam Information -->
+<!-- Fee Information -->
 
 <div class="dashboard-section">
 
 <div class="section-header">
 
 <h2>
-Exam Information
+Fee Information
 </h2>
 
 </div>
@@ -402,33 +314,15 @@ Exam Information
 <div class="form-group">
 
 <label>
-Exam
-</label>
-
-<div class="form-input">
-
-<?php echo htmlspecialchars($result['exam_name']); ?>
-
-</div>
-
-</div>
-
-<div class="form-group">
-
-<label>
-Type
+Fee Name
 </label>
 
 <div class="form-input">
 
 <?php
 
-echo ucwords(
-str_replace(
-'_',
-' ',
-$result['exam_type']
-)
+echo htmlspecialchars(
+$fee['fee_name']
 );
 
 ?>
@@ -447,9 +341,9 @@ Class
 
 <?php
 
-echo !empty($result['class_name'])
-? htmlspecialchars($result['class_name'])
-: 'School Wide';
+echo htmlspecialchars(
+$fee['class_name']
+);
 
 ?>
 
@@ -460,16 +354,17 @@ echo !empty($result['class_name'])
 <div class="form-group">
 
 <label>
-Section
+Amount
 </label>
 
 <div class="form-input">
 
-<?php
+₹<?php
 
-echo !empty($result['section_name'])
-? htmlspecialchars($result['section_name'])
-: 'All Sections';
+echo number_format(
+$fee['amount'],
+2
+);
 
 ?>
 
@@ -480,18 +375,20 @@ echo !empty($result['section_name'])
 <div class="form-group">
 
 <label>
-Exam Date
+Due Date
 </label>
 
 <div class="form-input">
 
 <?php
 
-echo !empty($result['exam_date'])
+echo !empty($fee['due_date'])
+
 ? date(
 'd M Y',
-strtotime($result['exam_date'])
+strtotime($fee['due_date'])
 )
+
 : '-';
 
 ?>
@@ -503,38 +400,16 @@ strtotime($result['exam_date'])
 <div class="form-group">
 
 <label>
-Exam Time
+Academic Year
 </label>
 
 <div class="form-input">
 
 <?php
 
-if(
-!empty($result['start_time'])
-&&
-!empty($result['end_time'])
-){
-
-echo
-date(
-'h:i A',
-strtotime($result['start_time'])
-)
-.
-' - '
-.
-date(
-'h:i A',
-strtotime($result['end_time'])
+echo htmlspecialchars(
+$fee['academic_year']
 );
-
-}
-else{
-
-echo '-';
-
-}
 
 ?>
 
@@ -545,20 +420,7 @@ echo '-';
 <div class="form-group">
 
 <label>
-Total Marks
-</label>
-
-<div class="form-input">
-
-<?php echo $result['total_marks']; ?>
-
-</div>
-
-</div>
-<div class="form-group">
-
-<label>
-Result Status
+Status
 </label>
 
 <div class="form-input">
@@ -566,8 +428,36 @@ Result Status
 <?php
 
 echo ucfirst(
-$result['status']
+$fee['status']
 );
+
+?>
+
+</div>
+
+</div>
+
+<div
+class="form-group"
+style="grid-column:1/-1;">
+
+<label>
+Description
+</label>
+
+<div class="form-input">
+
+<?php
+
+echo !empty($fee['description'])
+
+? nl2br(
+htmlspecialchars(
+$fee['description']
+)
+)
+
+: '-';
 
 ?>
 
@@ -579,14 +469,14 @@ $result['status']
 
 </div>
 
-<!-- Student Marks -->
+<!-- Assigned Students -->
 
 <div class="dashboard-section">
 
 <div class="section-header">
 
 <h2>
-Student Results
+Assigned Students
 </h2>
 
 </div>
@@ -599,7 +489,6 @@ Student Results
 
 <tr>
 
-
 <th>
 Student ID
 </th>
@@ -609,15 +498,22 @@ Student Name
 </th>
 
 <th>
-Marks
+Amount
 </th>
 
 <th>
-Percentage
+Paid
 </th>
 
 <th>
-Remarks
+Balance
+</th>
+
+<th>
+Status
+</th>
+<th>
+Action
 </th>
 
 </tr>
@@ -628,19 +524,12 @@ Remarks
 
 <?php
 
-if(mysqli_num_rows($marksQuery)>0){
+if(mysqli_num_rows($assignedStudents) > 0){
 
-while($row=mysqli_fetch_assoc($marksQuery)){
-
-$percentage = 0;
-
-if($result['total_marks'] > 0){
-
-$percentage =
-($row['marks_obtained'] /
-$result['total_marks']) * 100;
-
-}
+while($row =
+mysqli_fetch_assoc(
+$assignedStudents
+)){
 
 ?>
 
@@ -672,34 +561,40 @@ $row['full_name']
 
 <td>
 
-<?php
-
-echo $row['marks_obtained'];
-
-?>
-
-/
-
-<?php
-
-echo $result['total_marks'];
-
-?>
-
-</td>
-
-<td>
-
-<?php
+₹<?php
 
 echo number_format(
-$percentage,
+$row['amount'],
 2
 );
 
 ?>
 
-%
+</td>
+
+<td>
+
+₹<?php
+
+echo number_format(
+$row['paid_amount'],
+2
+);
+
+?>
+
+</td>
+
+<td>
+
+₹<?php
+
+echo number_format(
+$row['balance_amount'],
+2
+);
+
+?>
 
 </td>
 
@@ -707,12 +602,52 @@ $percentage,
 
 <?php
 
-echo htmlspecialchars(
-$row['remarks']
-?? '-'
+$statusClass = 'danger';
+
+if($row['payment_status']=='partial'){
+$statusClass='warning';
+}
+elseif($row['payment_status']=='paid'){
+$statusClass='success';
+}
+
+?>
+
+<span
+class="status <?php echo $statusClass; ?>">
+
+<?php
+
+echo ucfirst(
+$row['payment_status']
 );
 
 ?>
+
+</span>
+
+</td>
+<td>
+
+<?php if($row['balance_amount'] > 0){ ?>
+
+<a
+href="collect.php?id=<?php echo $row['student_fee_id']; ?>"
+class="btn btn-primary">
+
+Collect
+
+</a>
+
+<?php } else { ?>
+
+<span class="status success">
+
+Completed
+
+</span>
+
+<?php } ?>
 
 </td>
 
@@ -730,13 +665,13 @@ else{
 <tr>
 
 <td
-colspan="5"
+colspan="6"
 style="
 text-align:center;
 padding:40px;
 ">
 
-No marks entered yet.
+No students assigned yet.
 
 </td>
 

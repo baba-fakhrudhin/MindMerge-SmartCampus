@@ -89,6 +89,13 @@ function permission_module_registry(): array
             'action' => 'view',
             'match'  => '/attendance/',
         ],
+        'teacher_attendance' => [
+    'label'  => 'Teacher Attendance',
+    'icon'   => 'fa-user-check',
+    'url'    => 'attendance/teacher/index.php',
+    'action' => 'view',
+    'match'  => '/attendance/teacher/',
+    ],
         'teacher_student_attendance' => [
             'label'      => 'Student Attendance',
             'icon'       => 'fa-calendar-check',
@@ -214,7 +221,13 @@ function permission_module_registry(): array
             'url'    => 'results/index.php',
             'action' => 'view',
             'match'  => '/results/',
-        ],
+        ],'fees' => [
+    'label'  => 'Fees',
+    'icon'   => 'fa-money-bill-wave',
+    'url'    => 'fees/index.php',
+    'action' => 'view',
+    'match'  => '/fees/',
+    ],
         'transport' => [
             'label'  => 'Transport',
             'icon'   => 'fa-bus',
@@ -400,7 +413,20 @@ function permission_portal_menu_groups(): array
             ['label' => 'General', 'items' => ['profile', 'dashboard']],
             ['label' => 'Academics', 'items' => ['classes', 'sections', 'students', 'teachers']],
             ['label' => 'Scheduling', 'items' => ['schedules', 'timetables']],
-            ['label' => 'Operations', 'items' => ['attendance', 'notifications', 'results', 'exams', 'transport']],
+            ['label' => 'Operations', 'items' =>
+            [
+            'attendance',
+            'teacher_attendance',
+            'notifications',
+            'results',
+            'exams',
+            'transport'
+            ]],
+
+            ['label' => 'Finance', 'items' =>
+            [
+            'fees'
+            ]],
             ['label' => 'Administration', 'items' => ['permissions']],
         ],
         'teacher' => [
@@ -485,19 +511,21 @@ function permission_portal_menu_groups(): array
     if ($role !== 'admin') {
         $additional = [];
         $canonical_modules = [
-            'classes',
-            'sections',
-            'students',
-            'teachers',
-            'schedules',
-            'timetables',
-            'attendance',
-            'notifications',
-            'results',
-            'exams',
-            'transport',
-            'permissions',
-        ];
+    'classes',
+    'sections',
+    'students',
+    'teachers',
+    'schedules',
+    'timetables',
+    'attendance',
+    'teacher_attendance',
+    'notifications',
+    'results',
+    'exams',
+    'fees',
+    'transport',
+    'permissions',
+];
 
         foreach ($canonical_modules as $module_key) {
             if (
@@ -796,6 +824,45 @@ function permission_resolve_route(string $uri, string $script): ?array
         ['pattern' => '#/exams/delete#',              'module' => 'exams', 'action' => 'delete'],
         ['pattern' => '#/exams/view#',                'module' => 'exams', 'action' => 'view'],
         ['pattern' => '#/exams/#',                    'module' => 'exams', 'action' => 'view'],
+        ['pattern' => '#/fees/add#',
+ 'module' => 'fees',
+ 'action' => 'create'],
+
+['pattern' => '#/fees/edit#',
+ 'module' => 'fees',
+ 'action' => 'edit'],
+
+['pattern' => '#/fees/delete#',
+ 'module' => 'fees',
+ 'action' => 'delete'],
+
+['pattern' => '#/fees/assign#',
+ 'module' => 'fees',
+ 'action' => 'edit'],
+
+['pattern' => '#/fees/collect#',
+ 'module' => 'fees',
+ 'action' => 'edit'],
+
+['pattern' => '#/fees/payments#',
+ 'module' => 'fees',
+ 'action' => 'view'],
+
+['pattern' => '#/fees/receipts#',
+ 'module' => 'fees',
+ 'action' => 'view'],
+
+['pattern' => '#/fees/report#',
+ 'module' => 'fees',
+ 'action' => 'view'],
+
+['pattern' => '#/fees/export#',
+ 'module' => 'fees',
+ 'action' => 'view'],
+
+['pattern' => '#/fees/#',
+ 'module' => 'fees',
+ 'action' => 'view'],
 
         ['pattern' => '#/transport/.+/add#',           'module' => 'transport', 'action' => 'create'],
         ['pattern' => '#/transport/.+/edit#',          'module' => 'transport', 'action' => 'edit'],
@@ -872,10 +939,22 @@ function permission_guard_request(mysqli $conn): void
         ];
 
     foreach ($portal_restrictions as $pattern => $allowed_roles) {
-        if (preg_match($pattern, $path) && !in_array($role, $allowed_roles, true)) {
-            permission_deny_and_exit();
-        }
+
+    if ($role === 'admin') {
+        continue;
     }
+
+    if (
+        preg_match($pattern, $path)
+        &&
+        !in_array($role, $allowed_roles, true)
+    ) {
+
+        permission_deny_and_exit();
+
+    }
+
+}
 
     $route = permission_resolve_route($uri, $script);
 
@@ -939,6 +1018,8 @@ function permission_module_label(string $module_key): string
         'teacher_students' => 'Students (Teacher Portal)',
         'teacher_timetable' => 'Timetable (Teacher Portal)',
         'teacher_reports' => 'Reports (Teacher Portal)',
+        'fees' => 'Fees Management',
+        'teacher_attendance' => 'Teacher Attendance',
         'student_attendance' => 'Attendance (Student Portal)',
         'student_timetable' => 'Timetable (Student Portal)',
         'student_results' => 'Results (Student Portal)',
