@@ -1,10 +1,13 @@
 <?php
 
 require_once __DIR__ . '/../../config/notifications.php';
+require_once __DIR__ . '/ExamService.php';
 
 class AdminDashboardService
 {
     private mysqli $conn;
+    private array $tableCache = [];
+    private array $columnCache = [];
 
     public function __construct(mysqli $conn)
     {
@@ -17,6 +20,8 @@ class AdminDashboardService
         $total_teachers = $this->scalar("SELECT COUNT(*) FROM teachers");
         $total_classes  = $this->scalar("SELECT COUNT(*) FROM classes WHERE status='active'");
         $total_sections = $this->scalar("SELECT COUNT(*) FROM sections WHERE status='active'");
+        $total_transport = $this->scalar("SELECT COUNT(*) FROM transport_buses WHERE status='active'");
+        $fee_pending = $this->scalarFloat("SELECT COALESCE(SUM(balance_amount),0) FROM student_fees");
 
         $student_rate = $this->attendanceRate(
             "SELECT COUNT(*) FROM attendance_records ar
@@ -42,6 +47,8 @@ class AdminDashboardService
             'total_teachers'         => $total_teachers,
             'total_classes'          => $total_classes,
             'total_sections'         => $total_sections,
+            'total_transport'        => $total_transport,
+            'fee_pending'            => $fee_pending,
             'attendance_rate'        => $student_rate,
             'teacher_attendance_rate'=> $teacher_rate,
             'unread_notifications'   => $unread,
@@ -82,6 +89,10 @@ class AdminDashboardService
         $labels = [];
         $values = [];
 
+        if (!$this->tablesExist(['attendance', 'attendance_records', 'classes'])) {
+            return ['labels' => $labels, 'values' => $values];
+        }
+
         $query = mysqli_query(
             $this->conn,
             "SELECT c.class_name,
@@ -95,7 +106,7 @@ class AdminDashboardService
              LIMIT 10"
         );
 
-        while ($row = mysqli_fetch_assoc($query)) {
+        while ($query && $row = mysqli_fetch_assoc($query)) {
             $labels[] = $row['class_name'];
             $rate = (int) $row['total'] > 0
                 ? round(((int) $row['present'] / (int) $row['total']) * 100, 1)
@@ -155,6 +166,15 @@ class AdminDashboardService
     {
         $best = null;
         $lowest = null;
+        if (!$this->tablesExist(['attendance', 'attendance_records'])) {
+            return [
+                'best_class'          => $best,
+                'lowest_class'        => $lowest,
+                'critical_students'   => 0,
+                'critical_teachers'   => 0,
+                'pending_sessions'    => 0,
+            ];
+        }
 
         $query = mysqli_query(
             $this->conn,
@@ -171,7 +191,7 @@ class AdminDashboardService
 
         $classes = [];
 
-        while ($row = mysqli_fetch_assoc($query)) {
+        while ($query && $row = mysqli_fetch_assoc($query)) {
             $rate = round(((int) $row['present'] / (int) $row['total']) * 100, 1);
             $name = $row['class_name'] . ' - ' . $row['section_name'];
             $classes[] = ['name' => $name, 'rate' => $rate];
@@ -184,12 +204,14 @@ class AdminDashboardService
         }
 
         $critical_students = $this->scalar(
-            "SELECT COUNT(DISTINCT st.id)
-             FROM students st
-             INNER JOIN attendance_records ar ON ar.student_id = st.id
-             INNER JOIN attendance a ON a.attendance_id = ar.attendance_id
-             GROUP BY st.id
-             HAVING (SUM(CASE WHEN ar.status != 'absent' THEN 1 ELSE 0 END) / COUNT(*)) * 100 < 75"
+            "SELECT COUNT(*) FROM (
+                SELECT st.id
+                FROM students st
+                INNER JOIN attendance_records ar ON ar.student_id = st.id
+                INNER JOIN attendance a ON a.attendance_id = ar.attendance_id
+                GROUP BY st.id
+                HAVING (SUM(CASE WHEN ar.status != 'absent' THEN 1 ELSE 0 END) / COUNT(*)) * 100 < 75
+             ) low_attendance"
         );
 
         $pending_sessions = $this->scalar(
@@ -214,21 +236,353 @@ class AdminDashboardService
 
     public function getRecentNotifications(int $limit = 5): array
     {
-        $items = [];
-        $query = mysqli_query(
-            $this->conn,
-            "SELECT id, title,type as notification_type, created_at
-             FROM notifications
-             ORDER BY created_at DESC
-             LIMIT $limit"
-        );
-
-        while ($row = mysqli_fetch_assoc($query)) {
-            $items[] = $row;
+        if (!$this->tableExists('notifications')) {
+            return [];
         }
 
+        $uid = (int) ($_SESSION['user']['id'] ?? 0);
+        $context = notification_user_context($this->conn, $uid, 'admin');
+
+        return notification_recent_for_context($this->conn, $context, $limit);
+    }
+    public function getInstitutionOverview(): array
+{
+    return [
+        'students' => $this->scalar("SELECT COUNT(*) FROM students"),
+        'teachers' => $this->scalar("SELECT COUNT(*) FROM teachers"),
+        'parents' => $this->scalar("SELECT COUNT(*) FROM parents"),
+        'classes' => $this->scalar("SELECT COUNT(*) FROM classes WHERE status='active'"),
+        'sections' => $this->scalar("SELECT COUNT(*) FROM sections WHERE status='active'"),
+        'subjects' => $this->scalar("SELECT COUNT(*) FROM subjects"),
+    ];
+}
+public function getFinanceOverview(): array
+{
+    return [
+        'total_assigned' => $this->scalarFloat("
+            SELECT COALESCE(SUM(amount),0)
+            FROM student_fees
+        "),
+
+        'total_collected' => $this->scalarFloat("
+            SELECT COALESCE(SUM(amount_paid),0)
+            FROM fee_payments
+        "),
+
+        'pending_amount' => $this->scalarFloat("
+            SELECT COALESCE(SUM(balance_amount),0)
+            FROM student_fees
+        "),
+
+        'pending_students' => $this->scalar("
+            SELECT COUNT(*)
+            FROM student_fees
+            WHERE payment_status!='paid'
+        "),
+
+        'today_collection' => $this->scalarFloat("
+            SELECT COALESCE(SUM(amount_paid),0)
+            FROM fee_payments
+            WHERE DATE(payment_date)=CURDATE()
+        "),
+    ];
+}
+public function getExamOverview(): array
+{
+    $examStats = (new ExamService($this->conn))->getExamStatistics();
+
+    return [
+
+        'total_exams' => $examStats['total_exams'],
+
+        'upcoming_exams' => $examStats['upcoming_exams'],
+
+        'published_results' => $this->scalar("
+            SELECT COUNT(*)
+            FROM results
+            WHERE status='published'
+        "),
+
+        'draft_results' => $this->scalar("
+            SELECT COUNT(*)
+            FROM results
+            WHERE status!='published'
+        ")
+
+    ];
+}
+public function getTransportOverview(): array
+{
+    return [
+
+        'buses' => $this->scalar("
+            SELECT COUNT(*)
+            FROM transport_buses
+        "),
+
+        'routes' => $this->scalar("
+            SELECT COUNT(*)
+            FROM transport_routes
+        "),
+
+        'drivers' => $this->scalar("
+            SELECT COUNT(*)
+            FROM transport_staff
+            WHERE staff_type='driver'
+        "),
+
+        'assigned_students' => $this->scalar("
+            SELECT COUNT(*)
+            FROM transport_student_assignments
+        ")
+
+    ];
+}
+public function getRecentAdmissions(int $limit=5): array
+{
+    $items=[];
+    if (!$this->tablesExist(['students', 'users', 'classes', 'sections'])) {
         return $items;
     }
+
+    $q=mysqli_query(
+        $this->conn,
+        "SELECT
+        s.student_id,
+        u.full_name,
+        c.class_name,
+        sec.section_name,
+        s.created_at
+
+        FROM students s
+
+        LEFT JOIN users u
+        ON u.id=s.user_id
+
+        LEFT JOIN classes c
+        ON c.class_id=s.class_id
+
+        LEFT JOIN sections sec
+        ON sec.section_id=s.section_id
+
+        ORDER BY s.created_at DESC
+
+        LIMIT {$limit}"
+    );
+
+    while($q && $row=mysqli_fetch_assoc($q)){
+        $items[]=$row;
+    }
+
+    return $items;
+}public function getRecentPayments(int $limit=5): array
+{
+    $items=[];
+    if (!$this->tablesExist(['fee_payments', 'student_fees', 'students', 'users'])) {
+        return $items;
+    }
+
+    $q=mysqli_query(
+        $this->conn,
+        "SELECT
+        fp.receipt_no,
+        fp.amount_paid,
+        fp.payment_date,
+        u.full_name
+
+        FROM fee_payments fp
+
+        INNER JOIN student_fees sf
+        ON sf.student_fee_id=fp.student_fee_id
+
+        INNER JOIN students s
+        ON s.id=sf.student_id
+
+        LEFT JOIN users u
+        ON u.id=s.user_id
+
+        ORDER BY fp.payment_date DESC
+
+        LIMIT {$limit}"
+    );
+
+    while($q && $row=mysqli_fetch_assoc($q)){
+        $items[]=$row;
+    }
+
+    return $items;
+}public function getRecentResults(int $limit=5): array
+{
+    $items=[];
+    if (!$this->tableExists('results')) {
+        return $items;
+    }
+
+    $q=mysqli_query(
+        $this->conn,
+        "SELECT
+        r.result_id,
+        e.exam_name,
+        c.class_name,
+        s.section_name,
+        r.status,
+        r.published_at
+
+        FROM results r
+
+        LEFT JOIN exams e
+        ON e.exam_id=r.exam_id
+
+        LEFT JOIN classes c
+        ON c.class_id=r.class_id
+
+        LEFT JOIN sections s
+        ON s.section_id=r.section_id
+
+        ORDER BY r.created_at DESC
+
+        LIMIT {$limit}"
+    );
+
+    while($q && $row=mysqli_fetch_assoc($q)){
+        $items[]=$row;
+    }
+
+    return $items;
+}public function getDashboardAlerts(): array
+{
+    return [
+
+        'pending_attendance'=>$this->getInsights()['pending_sessions'],
+
+        'critical_students'=>$this->getInsights()['critical_students'],
+
+        'pending_fee_students'=>$this->scalar("
+            SELECT COUNT(*)
+            FROM student_fees
+            WHERE payment_status!='paid'
+        "),
+
+        'draft_results'=>$this->scalar("
+            SELECT COUNT(*)
+            FROM results
+            WHERE status!='published'
+        ")
+
+    ];
+}
+public function getModuleHealth(): array
+{
+    return [
+
+        'attendance'=>$this->scalar("SELECT COUNT(*) FROM attendance"),
+
+        'fees'=>$this->scalar("SELECT COUNT(*) FROM fee_payments"),
+
+        'transport'=>$this->scalar("SELECT COUNT(*) FROM transport_student_assignments"),
+
+        'results'=>$this->scalar("SELECT COUNT(*) FROM results"),
+
+        'notifications'=>$this->scalar("SELECT COUNT(*) FROM notifications")
+
+    ];
+}
+
+public function getFinanceCollectionTrend(int $months = 6): array
+{
+    $labels = [];
+    $values = [];
+
+    for ($i = $months - 1; $i >= 0; $i--) {
+        $date = new DateTime("first day of -$i months");
+        $month = $date->format('Y-m');
+        $labels[] = $date->format('M Y');
+
+        $values[] = $this->scalarFloat(
+            "SELECT COALESCE(SUM(amount_paid),0)
+             FROM fee_payments
+             WHERE DATE_FORMAT(payment_date,'%Y-%m') = '$month'"
+        );
+    }
+
+    return ['labels' => $labels, 'values' => $values];
+}
+
+public function getExamPerformanceTrend(int $limit = 6): array
+{
+    $labels = [];
+    $values = [];
+
+    if (!$this->tablesExist(['result_marks', 'results', 'exams'])) {
+        return ['labels' => $labels, 'values' => $values];
+    }
+
+    $query = mysqli_query(
+        $this->conn,
+        "SELECT e.exam_name,
+                e.total_marks,
+                AVG(rm.marks_obtained) AS average_marks
+         FROM result_marks rm
+         INNER JOIN results r ON r.result_id = rm.result_id
+         INNER JOIN exams e ON e.exam_id = r.exam_id
+         GROUP BY e.exam_id, e.exam_name, e.total_marks
+         ORDER BY MAX(r.created_at) DESC
+         LIMIT $limit"
+    );
+
+    $rows = [];
+    while ($query && $row = mysqli_fetch_assoc($query)) {
+        $rows[] = $row;
+    }
+
+    $rows = array_reverse($rows);
+    foreach ($rows as $row) {
+        $labels[] = $row['exam_name'];
+        $totalMarks = (float) ($row['total_marks'] ?: 100);
+        $averageMarks = (float) ($row['average_marks'] ?? 0);
+        $values[] = $totalMarks > 0 ? round(($averageMarks / $totalMarks) * 100, 1) : 0;
+    }
+
+    return ['labels' => $labels, 'values' => $values];
+}
+
+public function getUpcomingEvents(int $limit = 5): array
+{
+    $items = [];
+
+    if (!$this->tableHasColumn('exams', 'exam_date')) {
+        return $items;
+    }
+
+    $query = mysqli_query(
+        $this->conn,
+        "SELECT e.exam_name,
+                e.exam_type,
+                e.exam_date,
+                e.start_time,
+                c.class_name,
+                s.section_name
+         FROM exams e
+         LEFT JOIN classes c ON c.class_id = e.class_id
+         LEFT JOIN sections s ON s.section_id = e.section_id
+         WHERE e.exam_date >= CURDATE()
+           AND e.status IN ('upcoming', 'ongoing')
+         ORDER BY e.exam_date ASC, e.start_time ASC
+         LIMIT $limit"
+    );
+
+    while ($query && $row = mysqli_fetch_assoc($query)) {
+        $items[] = [
+            'title' => $row['exam_name'],
+            'type' => ucfirst(str_replace('_', ' ', $row['exam_type'] ?? 'Exam')),
+            'date' => $row['exam_date'],
+            'time' => $row['start_time'],
+            'scope' => trim(($row['class_name'] ?? '') . ' ' . ($row['section_name'] ?? '')),
+        ];
+    }
+
+    return $items;
+}
 
     private function attendanceRate(string $present_sql): float
     {
@@ -240,28 +594,56 @@ class AdminDashboardService
 
     private function upcomingExamCount(): int
     {
-        if (!$this->tableHasColumn('exams', 'exam_date')) {
-            return 0;
-        }
-
-        return $this->scalar(
-            "SELECT COUNT(*) FROM exams
-             WHERE status = 'active' AND exam_date >= CURDATE()"
-        );
+        return (new ExamService($this->conn))->getExamStatistics()['upcoming_exams'];
     }
 
     private function tableHasColumn(string $table, string $column): bool
     {
-        $table = mysqli_real_escape_string($this->conn, $table);
-        $column = mysqli_real_escape_string($this->conn, $column);
-        $result = mysqli_query($this->conn, "SHOW COLUMNS FROM `$table` LIKE '$column'");
+        $key = $table . '.' . $column;
+        if (isset($this->columnCache[$key])) {
+            return $this->columnCache[$key];
+        }
+        if (!$this->tableExists($table)) {
+            return $this->columnCache[$key] = false;
+        }
 
-        return $result && mysqli_num_rows($result) > 0;
+        $safeTable = mysqli_real_escape_string($this->conn, $table);
+        $safeColumn = mysqli_real_escape_string($this->conn, $column);
+        $result = mysqli_query($this->conn, "SHOW COLUMNS FROM `$safeTable` LIKE '$safeColumn'");
+
+        return $this->columnCache[$key] = ($result && mysqli_num_rows($result) > 0);
+    }
+
+    private function tableExists(string $table): bool
+    {
+        if (isset($this->tableCache[$table])) {
+            return $this->tableCache[$table];
+        }
+
+        $safe = mysqli_real_escape_string($this->conn, $table);
+        $result = mysqli_query($this->conn, "SHOW TABLES LIKE '$safe'");
+
+        return $this->tableCache[$table] = ($result && mysqli_num_rows($result) > 0);
+    }
+
+    private function tablesExist(array $tables): bool
+    {
+        foreach ($tables as $table) {
+            if (!$this->tableExists($table)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private function scalar(string $sql): int
     {
-        $result = mysqli_query($this->conn, $sql);
+        try {
+            $result = mysqli_query($this->conn, $sql);
+        } catch (mysqli_sql_exception $exception) {
+            return 0;
+        }
 
         if (!$result) {
             return 0;
@@ -270,5 +652,22 @@ class AdminDashboardService
         $row = mysqli_fetch_row($result);
 
         return (int) ($row[0] ?? 0);
+    }
+
+    private function scalarFloat(string $sql): float
+    {
+        try {
+            $result = mysqli_query($this->conn, $sql);
+        } catch (mysqli_sql_exception $exception) {
+            return 0;
+        }
+
+        if (!$result) {
+            return 0;
+        }
+
+        $row = mysqli_fetch_row($result);
+
+        return (float) ($row[0] ?? 0);
     }
 }

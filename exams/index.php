@@ -2,10 +2,53 @@
 
 include('../config/auth.php');
 include('../config/db.php');
+require_once '../shared/services/ExamService.php';
+require_once '../shared/services/StudentDashboardService.php';
+require_once '../shared/services/ParentDashboardService.php';
+require_once '../shared/services/TeacherScopeService.php';
+
+$examService = new ExamService($conn);
+$role = strtolower($_SESSION['user']['role'] ?? 'admin');
+$scope = [];
+$exams = [];
+
+if ($role === 'student') {
+    $studentService = new StudentDashboardService($conn, (int) ($_SESSION['user']['id'] ?? 0));
+    $student = $studentService->getStudent();
+    $scope = [
+        'class_id' => (int) ($student['class_id'] ?? 0),
+        'section_id' => (int) ($student['section_id'] ?? 0),
+        'hide_drafts' => true,
+    ];
+    $exams = $examService->getExams($scope);
+} elseif ($role === 'parent') {
+    $parentService = new ParentDashboardService($conn, (int) ($_SESSION['user']['id'] ?? 0));
+    $examMap = [];
+    foreach ($parentService->getChildren() as $child) {
+        foreach ($examService->getExams([
+            'class_id' => (int) ($child['class_id'] ?? 0),
+            'section_id' => (int) ($child['section_id'] ?? 0),
+            'hide_drafts' => true,
+        ]) as $exam) {
+            $examMap[(int) $exam['exam_id']] = $exam;
+        }
+    }
+    $exams = array_values($examMap);
+    $scope = ['children' => $parentService->getChildren()];
+} elseif ($role === 'teacher') {
+    $teacherScope = new TeacherScopeService($conn, (int) ($_SESSION['user']['id'] ?? 0));
+    $scope = [
+        'teacher_id' => $teacherScope->getTeacherId(),
+        'hide_drafts' => true,
+    ];
+    $exams = $examService->getExams($scope);
+} else {
+    $exams = $examService->getExams();
+}
+
+$examStats = $examService->getExamStatistics($scope);
 
 $search = '';
-
-$where = '';
 
 if(isset($_GET['search']) && trim($_GET['search']) != ''){
 
@@ -14,127 +57,28 @@ if(isset($_GET['search']) && trim($_GET['search']) != ''){
         trim($_GET['search'])
     );
 
-    $where = "
+    $needle = strtolower($search);
+    $exams = array_values(array_filter($exams, function ($exam) use ($needle) {
+        $haystack = strtolower(implode(' ', [
+            $exam['exam_name'] ?? '',
+            $exam['exam_type'] ?? '',
+            $exam['class_name'] ?? '',
+            $exam['section_name'] ?? '',
+            $exam['subject_name'] ?? '',
+            $exam['custom_subject'] ?? '',
+            $exam['status'] ?? '',
+        ]));
 
-    WHERE
-
-e.exam_name LIKE '%$search%'
-
-OR
-
-e.exam_type LIKE '%$search%'
-
-OR
-
-c.class_name LIKE '%$search%'
-
-OR
-
-s.section_name LIKE '%$search%'
-
-OR
-
-sub.subject_name LIKE '%$search%'
-
-OR
-
-e.custom_subject LIKE '%$search%'
-
-OR
-
-e.status LIKE '%$search%'
-
-    ";
-
+        return str_contains($haystack, $needle);
+    }));
 }
-
-$query = mysqli_query(
-
-$conn,
-
-"SELECT
-
-e.*,
-
-c.class_name,
-
-s.section_name,
-
-sub.subject_name
-
-FROM exams e
-
-LEFT JOIN classes c
-ON e.class_id = c.class_id
-
-LEFT JOIN sections s
-ON e.section_id = s.section_id
-
-LEFT JOIN subjects sub
-ON e.subject_id = sub.subject_id
-
-$where
-
-ORDER BY e.exam_id DESC"
-
-);
 
 /* Statistics */
 
-$total_exams = mysqli_fetch_assoc(
-
-    mysqli_query(
-
-        $conn,
-
-        "SELECT COUNT(*) total
-        FROM exams"
-
-    )
-
-)['total'];
-
-$upcoming_exams = mysqli_fetch_assoc(
-
-    mysqli_query(
-
-        $conn,
-
-        "SELECT COUNT(*) total
-        FROM exams
-        WHERE status='upcoming'"
-
-    )
-
-)['total'];
-
-$ongoing_exams = mysqli_fetch_assoc(
-
-    mysqli_query(
-
-        $conn,
-
-        "SELECT COUNT(*) total
-        FROM exams
-        WHERE status='ongoing'"
-
-    )
-
-)['total'];
-
-$completed_exams = mysqli_fetch_assoc(
-
-    mysqli_query(
-
-        $conn,
-
-        "SELECT COUNT(*) total
-        FROM exams
-        WHERE status='completed'"
-
-    )
-
-)['total'];
+$total_exams = $examStats['total_exams'];
+$upcoming_exams = $examStats['upcoming_exams'];
+$ongoing_exams = $examStats['ongoing_exams'];
+$completed_exams = $examStats['completed_exams'];
 
 ?>
 
@@ -198,7 +142,7 @@ Create and manage examinations.
 
 </div>
 
-<a
+<?php if (canCreate('exams')) { ?><a
 href="add.php"
 class="btn btn-primary">
 
@@ -206,7 +150,7 @@ class="btn btn-primary">
 
 Add Exam
 
-</a>
+</a><?php } ?>
 
 </div>
 
@@ -342,7 +286,7 @@ gap:12px;
 flex-wrap:wrap;
 ">
 
-<a
+<?php if (canCreate('exams')) { ?><a
 href="add.php"
 class="btn btn-primary">
 
@@ -350,7 +294,7 @@ class="btn btn-primary">
 
 Add Exam
 
-</a>
+</a><?php } ?>
 
 <a
 href="../results/index.php"
@@ -493,9 +437,9 @@ Actions
 <tbody>
     <?php
 
-if(mysqli_num_rows($query) > 0){
+if(count($exams) > 0){
 
-while($row = mysqli_fetch_assoc($query)){
+foreach($exams as $row){
 
 ?>
 
@@ -542,9 +486,7 @@ echo !empty($row['class_name'])
 
 <?php
 
-echo htmlspecialchars(
-$row['section_name'] ?? '-'
-);
+echo !empty($row['section_name']) ? htmlspecialchars($row['section_name']) : 'All Sections';
 
 ?>
 
@@ -668,7 +610,7 @@ View
 
 </a>
 
-<a
+<?php if (canEdit('exams')) { ?><a
 href="edit.php?id=<?php echo $row['exam_id']; ?>"
 class="btn btn-primary">
 
@@ -676,9 +618,9 @@ class="btn btn-primary">
 
 Edit
 
-</a>
+</a><?php } ?>
 
-<a
+<?php if (canDelete('exams')) { ?><a
 href="delete.php?id=<?php echo $row['exam_id']; ?>"
 class="btn"
 style="
@@ -691,7 +633,7 @@ onclick="return confirm('Delete this exam?');">
 
 Delete
 
-</a>
+</a><?php } ?>
 
 </div>
 

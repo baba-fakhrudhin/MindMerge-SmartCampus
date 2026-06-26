@@ -52,9 +52,9 @@ e.exam_name,
 e.exam_date,
 e.total_marks,
 
-c.class_name,
+COALESCE(c.class_name,'School Wide') AS class_name,
 
-s.section_name,
+COALESCE(s.section_name,'All Sections') AS section_name,
 
 COUNT(DISTINCT rm.mark_id) AS total_students,
 
@@ -64,11 +64,10 @@ FROM results r
 
 INNER JOIN exams e
 ON r.exam_id = e.exam_id
-
-INNER JOIN classes c
+LEFT JOIN classes c
 ON r.class_id = c.class_id
 
-INNER JOIN sections s
+LEFT JOIN sections s
 ON r.section_id = s.section_id
 
 LEFT JOIN result_marks rm

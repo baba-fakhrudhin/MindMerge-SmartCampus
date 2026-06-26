@@ -11,10 +11,20 @@ requirePermission('results', 'view');
 
 $studentService = new StudentDashboardService($conn, (int) $_SESSION['user']['id']);
 $resultsService = new ResultsService($conn);
-$student_id = $studentService->getStudentDbId();
-$results = $resultsService->getStudentResults($student_id);
-$gpaInfo = $resultsService->getLatestGpa($student_id);
-$trend = $resultsService->getPerformanceTrend($student_id);
+$student = $studentService->getStudent();
+$rows = $resultsService->getStudentResults($studentService->getStudentDbId());
+$trend = $resultsService->getPerformanceTrend($studentService->getStudentDbId());
+$latest = $resultsService->getLatestPerformance($studentService->getStudentDbId());
+
+function e($value): string
+{
+    return htmlspecialchars((string) ($value ?? ''), ENT_QUOTES, 'UTF-8');
+}
+
+function result_date($value, $fallback): string
+{
+    return $value ? date('M j, Y', strtotime($value)) : e($fallback ?: '-');
+}
 
 ?>
 <!DOCTYPE html>
@@ -26,7 +36,7 @@ $trend = $resultsService->getPerformanceTrend($student_id);
 <link rel="stylesheet" href="../../assets/css/global.css">
 <link rel="stylesheet" href="../../assets/css/layout.css">
 <link rel="stylesheet" href="../../assets/css/components.css">
-<link rel="stylesheet" href="../../assets/css/portals.css">
+<link rel="stylesheet" href="../../assets/css/dashboard-components.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
 <body>
@@ -35,48 +45,56 @@ $trend = $resultsService->getPerformanceTrend($student_id);
 <div class="main-content">
 <?php include('../../partials/topbar.php'); ?>
 <div class="page-content">
-<div class="page-header">
-<div><h1>My Results</h1><p>Published academic results and GPA.</p></div>
+<div class="dashboard-page">
+
+<section class="dashboard-hero">
+<div class="hero-content">
+<h1 class="hero-title">My Results</h1>
+<p class="hero-description">Published exam results for <?php echo e($student['full_name'] ?? 'your profile'); ?>.</p>
+<div class="hero-meta">
+<span class="hero-badge"><i class="fa-solid fa-id-card"></i><?php echo e($student['student_id'] ?? 'Student'); ?></span>
+<span class="hero-badge"><i class="fa-solid fa-school"></i><?php echo e(trim(($student['class_name'] ?? '') . ' ' . ($student['section_name'] ?? ''))); ?></span>
+<span class="hero-badge"><i class="fa-solid fa-chart-line"></i><?php echo $latest ? number_format((float) $latest['percentage'], 1) . '% latest' : 'No published result'; ?></span>
 </div>
-<div class="portal-stats-grid">
-<div class="dashboard-card"><h3>Latest GPA</h3><h1><?php echo $gpaInfo['gpa'] ?? '—'; ?></h1></div>
-<div class="dashboard-card"><h3>Overall GPA</h3><h1><?php echo $gpaInfo['overall_gpa'] ?? '—'; ?></h1></div>
-<div class="dashboard-card"><h3>Subjects</h3><h1><?php echo count($results); ?></h1></div>
 </div>
-<div class="dashboard-section">
-<div class="section-header"><h2>Performance Trend</h2></div>
-<canvas id="gpaChart" style="max-height:260px;"></canvas>
-</div>
-<div class="dashboard-section">
-<div class="table-responsive">
-<table class="custom-table">
-<thead><tr><th>Exam ID</th><th>Exam</th><th>Date</th><th>Subject</th><th>Total</th><th>Grade</th><th>GPA</th></tr></thead>
+<div class="hero-illustration"><i class="fa-solid fa-square-poll-vertical"></i></div>
+</section>
+
+<section class="stats-grid">
+<div class="stat-card"><div class="stat-icon"><i class="fa-solid fa-file-circle-check"></i></div><div class="stat-content"><span class="stat-label">Published Results</span><span class="stat-value"><?php echo number_format(count($rows)); ?></span><span class="stat-description">Visible to student portal</span></div></div>
+<div class="stat-card"><div class="stat-icon"><i class="fa-solid fa-percent"></i></div><div class="stat-content"><span class="stat-label">Latest Percentage</span><span class="stat-value"><?php echo $latest ? number_format((float) $latest['percentage'], 1) . '%' : '-'; ?></span><span class="stat-description"><?php echo e($latest['grade'] ?? 'No grade yet'); ?></span></div></div>
+<div class="stat-card"><div class="stat-icon"><i class="fa-solid fa-chart-column"></i></div><div class="stat-content"><span class="stat-label">Trend Points</span><span class="stat-value"><?php echo number_format(count($trend['values'])); ?></span><span class="stat-description">Published exams plotted</span></div></div>
+</section>
+
+<section class="dashboard-widget">
+<div class="dashboard-widget-header"><div class="dashboard-widget-title"><i class="fa-solid fa-list-check"></i><div><h4>Published Marks</h4><span>Scores, percentages, grades, and remarks</span></div></div></div>
+<div class="dashboard-widget-body dashboard-table-wrap">
+<table class="dashboard-table">
+<thead><tr><th>Exam ID</th><th>Exam</th><th>Date</th><th>Subject</th><th>Marks</th><th>Percentage</th><th>Grade</th><th>Remarks</th></tr></thead>
 <tbody>
-<?php if (empty($results)) { ?>
-<tr><td colspan="7"><div class="empty-state"><i class="fa-solid fa-chart-column"></i><h3>No published results</h3><p>Your exam marksheets and GPA reports will appear here.</p></div></td></tr>
-<?php } else { foreach ($results as $row) { ?>
+<?php if (empty($rows)) { ?>
+<tr><td colspan="8"><div class="dashboard-empty"><i class="fa-solid fa-chart-column"></i><h3>No published results</h3><p>Your published exam results will appear here.</p></div></td></tr>
+<?php } else { foreach ($rows as $row) { ?>
 <tr>
-<td><strong><?php echo htmlspecialchars($row['exam_code'] ?? 'Legacy'); ?></strong></td>
-<td><?php echo htmlspecialchars($row['exam_name'] ?? 'Result Sheet'); ?></td>
-<td><?php echo !empty($row['exam_date']) ? date('M j, Y', strtotime($row['exam_date'])) : htmlspecialchars($row['academic_year']); ?></td>
-<td><?php echo htmlspecialchars($row['subject_name']); ?></td>
-<td><?php echo htmlspecialchars($row['total_marks']); ?></td>
-<td><?php echo htmlspecialchars($row['grade'] ?? '-'); ?></td>
-<td><?php echo htmlspecialchars($row['grade_point'] ?? '-'); ?></td>
+<td><strong><?php echo e($row['exam_code'] ?? 'EXM'); ?></strong></td>
+<td><?php echo e($row['exam_name'] ?? 'Result'); ?></td>
+<td><?php echo result_date($row['exam_date'] ?? null, $row['academic_year'] ?? ''); ?></td>
+<td><?php echo e($row['subject_name'] ?? '-'); ?></td>
+<td><?php echo e($row['marks_obtained'] ?? '0'); ?>/<?php echo e($row['max_marks'] ?? '-'); ?></td>
+<td><?php echo number_format((float) ($row['percentage'] ?? 0), 1); ?>%</td>
+<td><?php echo e($row['grade'] ?? '-'); ?></td>
+<td><?php echo e($row['remarks'] ?? '-'); ?></td>
 </tr>
 <?php } } ?>
 </tbody>
 </table>
 </div>
+</section>
+
 </div>
-</div></div></div>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</div>
+</div>
+</div>
 <script src="../../assets/js/common.js"></script>
-<script>
-const trend = <?php echo json_encode($trend); ?>;
-if (trend.labels.length) {
-new Chart(document.getElementById('gpaChart'), { type:'line', data:{ labels:trend.labels, datasets:[{ label:'GPA', data:trend.values, borderColor:'#7c3aed', tension:0.3 }] }, options:{ responsive:true, scales:{ y:{ min:0, max:4 } } } });
-}
-</script>
 </body>
 </html>

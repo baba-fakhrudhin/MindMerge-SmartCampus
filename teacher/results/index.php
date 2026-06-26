@@ -49,9 +49,9 @@ $results = $service->getResultsForTeacher($scope->getTeacherId());
 <td><?php echo !empty($r['exam_date']) ? date('M j, Y', strtotime($r['exam_date'])) : htmlspecialchars($r['academic_year']); ?></td>
 <td><span class="status <?php echo $r['status'] === 'published' ? 'success' : 'warning'; ?>"><?php echo ucfirst($r['status']); ?></span></td>
 <td>
-<a href="../../results/view.php?result_id=<?php echo (int) $r['result_id']; ?>" class="btn btn-sm"><i class="fa-solid fa-eye"></i></a>
+<a href="../../results/view.php?id=<?php echo (int) $r['result_id']; ?>" class="btn btn-sm"><i class="fa-solid fa-eye"></i></a>
 <?php if (canCreate('results') || canEdit('results')) { ?>
-<a href="../../results/entries.php?result_id=<?php echo (int) $r['result_id']; ?>" class="btn btn-sm"><i class="fa-solid fa-pen"></i></a>
+<a href="../../results/mark.php?id=<?php echo (int) $r['result_id']; ?>" class="btn btn-sm"><i class="fa-solid fa-pen"></i></a>
 <?php } ?>
 </td>
 </tr>

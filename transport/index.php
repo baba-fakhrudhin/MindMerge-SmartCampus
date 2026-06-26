@@ -25,14 +25,14 @@ switch($role){
     case 'student':
 
         header(
-            'Location:tracking/index.php'
+            'Location:../student/transport/index.php'
         );
         exit;
 
     case 'parent':
 
         header(
-            'Location:tracking/index.php'
+            'Location:../parent/transport/index.php'
         );
         exit;
 

@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../../config/notifications.php';
+require_once __DIR__ . '/ExamService.php';
 
 class ParentDashboardService
 {
@@ -8,6 +9,8 @@ class ParentDashboardService
     private ?array $parent = null;
     private array $parentLinks = [];
     private array $children = [];
+    private array $tableCache = [];
+    private array $columnCache = [];
 
     public function __construct(mysqli $conn, int $user_id)
     {
@@ -40,6 +43,18 @@ class ParentDashboardService
         return $this->children;
     }
 
+    public function setActiveChild(int $student_db_id): void
+    {
+        if ($student_db_id <= 0) {
+            return;
+        }
+
+        $this->children = array_values(array_filter(
+            $this->children,
+            fn($child) => (int) ($child['id'] ?? 0) === $student_db_id
+        ));
+    }
+
     public function getParentLinks(): array
     {
         return $this->parentLinks;
@@ -49,9 +64,9 @@ class ParentDashboardService
     {
         $count = count($this->children);
         $avg_attendance = 0;
-        $avg_performance = 0;
+        $avg_performance = $this->averagePerformance();
 
-        if ($count > 0) {
+        if ($count > 0 && $this->tableExists('attendance_records')) {
             $total_att = 0;
 
             foreach ($this->children as $child) {
@@ -74,11 +89,15 @@ class ParentDashboardService
         $context = notification_user_context($this->conn, $uid, $role);
         $unread = notification_unread_count($this->conn, $context);
 
+        $examStats = (new ExamService($this->conn))->getExamStatistics(['children' => $this->children]);
+
         return [
             'children_count'       => $count,
             'average_attendance'   => $avg_attendance,
             'average_performance'  => $avg_performance,
             'unread_notifications' => $unread,
+            'fee_balance'          => $this->getTotalFeeBalance(),
+            'upcoming_exams'       => $examStats['upcoming_exams'],
         ];
     }
 
@@ -123,6 +142,14 @@ class ParentDashboardService
         $alerts = [];
         $performance_alerts = [];
 
+        if (!$this->tableExists('attendance_records')) {
+            return [
+                'attendance_alerts'    => $alerts,
+                'performance_alerts'   => $performance_alerts,
+                'upcoming_exams'       => $this->getUpcomingExams(),
+            ];
+        }
+
         foreach ($this->children as $child) {
             $sid = (int) $child['id'];
             $present = $this->scalar(
@@ -145,13 +172,17 @@ class ParentDashboardService
         return [
             'attendance_alerts'    => $alerts,
             'performance_alerts'   => $performance_alerts,
-            'upcoming_exams'       => [],
+            'upcoming_exams'       => $this->getUpcomingExams(),
         ];
     }
 
     public function getChildAttendance(int $student_db_id): array
     {
         $items = [];
+        if ($student_db_id <= 0 || !$this->tablesExist(['attendance_records', 'attendance'])) {
+            return $items;
+        }
+
         $query = mysqli_query(
             $this->conn,
             "SELECT a.attendance_date, ar.status, sub.subject_name
@@ -163,11 +194,198 @@ class ParentDashboardService
              LIMIT 30"
         );
 
-        while ($row = mysqli_fetch_assoc($query)) {
+        while ($query && $row = mysqli_fetch_assoc($query)) {
             $items[] = $row;
         }
 
         return $items;
+    }
+
+    public function getChildrenOverview(): array
+    {
+        $items = [];
+
+        foreach ($this->children as $child) {
+            $sid = (int) $child['id'];
+            $present = $this->tableExists('attendance_records') ? $this->scalar("SELECT COUNT(*) FROM attendance_records WHERE student_id = '$sid' AND status != 'absent'") : 0;
+            $total = $this->tableExists('attendance_records') ? $this->scalar("SELECT COUNT(*) FROM attendance_records WHERE student_id = '$sid'") : 0;
+            $attendance = $total > 0 ? round(($present / $total) * 100, 1) : 0;
+            $feeBalance = $this->tableExists('student_fees') ? $this->scalarFloat("SELECT COALESCE(SUM(balance_amount),0) FROM student_fees WHERE student_id = '$sid'") : 0;
+            $latest = $this->tablesExist(['result_marks', 'results', 'exams']) ? mysqli_fetch_assoc(mysqli_query(
+                $this->conn,
+                "SELECT rm.marks_obtained, e.total_marks, e.exam_name
+                 FROM result_marks rm
+                 INNER JOIN results r ON r.result_id = rm.result_id
+                 INNER JOIN exams e ON e.exam_id = r.exam_id
+                 WHERE rm.student_id = '$sid' AND r.status = 'published'
+                 ORDER BY COALESCE(r.published_at, r.created_at) DESC
+                 LIMIT 1"
+            )) : null;
+
+            $performance = null;
+            if ($latest && (float) $latest['total_marks'] > 0) {
+                $performance = round(((float) $latest['marks_obtained'] / (float) $latest['total_marks']) * 100, 1);
+            }
+
+            $items[] = [
+                'student' => $child,
+                'attendance' => $attendance,
+                'fee_balance' => $feeBalance,
+                'latest_exam' => $latest['exam_name'] ?? null,
+                'performance' => $performance,
+            ];
+        }
+
+        return $items;
+    }
+
+    public function getTotalFeeBalance(): float
+    {
+        $ids = $this->childIdList();
+
+        if ($ids === '' || !$this->tableExists('student_fees')) {
+            return 0;
+        }
+
+        return $this->scalarFloat("SELECT COALESCE(SUM(balance_amount),0) FROM student_fees WHERE student_id IN ($ids)");
+    }
+
+    public function getFeeSummary(): array
+    {
+        $ids = $this->childIdList();
+
+        if ($ids === '' || !$this->tableExists('student_fees')) {
+            return ['assigned' => 0, 'paid' => 0, 'balance' => 0];
+        }
+
+        return [
+            'assigned' => $this->scalarFloat("SELECT COALESCE(SUM(amount),0) FROM student_fees WHERE student_id IN ($ids)"),
+            'paid' => $this->scalarFloat("SELECT COALESCE(SUM(paid_amount),0) FROM student_fees WHERE student_id IN ($ids)"),
+            'balance' => $this->scalarFloat("SELECT COALESCE(SUM(balance_amount),0) FROM student_fees WHERE student_id IN ($ids)"),
+        ];
+    }
+
+    public function getUpcomingExams(int $limit = 6): array
+    {
+        require_once __DIR__ . '/ExamService.php';
+        $service = new ExamService($this->conn);
+        return $service->getUpcomingExamsForChildren($this->children, $limit);
+    }
+
+    public function getRecentResults(int $limit = 6): array
+    {
+        $ids = $this->childIdList();
+        $items = [];
+
+        if ($ids === '' || !$this->tablesExist(['result_marks', 'results', 'exams'])) {
+            return $items;
+        }
+
+        $query = mysqli_query(
+            $this->conn,
+            "SELECT u.full_name, rm.marks_obtained, r.status, e.exam_name, e.total_marks, e.exam_date
+             FROM result_marks rm
+             INNER JOIN students st ON st.id = rm.student_id
+             INNER JOIN users u ON u.id = st.user_id
+             INNER JOIN results r ON r.result_id = rm.result_id
+             INNER JOIN exams e ON e.exam_id = r.exam_id
+             WHERE rm.student_id IN ($ids) AND r.status = 'published'
+             ORDER BY COALESCE(r.published_at, r.created_at) DESC
+             LIMIT $limit"
+        );
+
+        while ($query && $row = mysqli_fetch_assoc($query)) {
+            $items[] = $row;
+        }
+
+        return $items;
+    }
+
+    public function getPerformanceTrend(): array
+    {
+        $ids = $this->childIdList();
+        $labels = [];
+        $values = [];
+
+        if ($ids === '' || !$this->tablesExist(['result_marks', 'results', 'exams'])) {
+            return ['labels' => $labels, 'values' => $values];
+        }
+
+        $query = mysqli_query(
+            $this->conn,
+            "SELECT e.exam_name, e.total_marks, AVG(rm.marks_obtained) AS average_marks,
+                    MAX(COALESCE(e.exam_date, DATE(r.created_at))) AS sort_date
+             FROM result_marks rm
+             INNER JOIN results r ON r.result_id = rm.result_id
+             INNER JOIN exams e ON e.exam_id = r.exam_id
+             WHERE rm.student_id IN ($ids) AND r.status = 'published'
+             GROUP BY e.exam_id, e.exam_name, e.total_marks
+             ORDER BY sort_date ASC"
+        );
+
+        while ($query && $row = mysqli_fetch_assoc($query)) {
+            $total = (float) ($row['total_marks'] ?: 100);
+            $labels[] = $row['exam_name'];
+            $values[] = $total > 0 ? round(((float) $row['average_marks'] / $total) * 100, 1) : 0;
+        }
+
+        return ['labels' => $labels, 'values' => $values];
+    }
+
+    public function getTransportSummary(): array
+    {
+        $ids = $this->childIdList();
+        $items = [];
+
+        if ($ids === '' || !$this->tablesExist(['transport_student_assignments', 'transport_buses'])) {
+            return $items;
+        }
+
+        $query = mysqli_query(
+            $this->conn,
+            "SELECT u.full_name, b.bus_number, b.bus_name, r.route_name, ts.stop_name,
+                    d.full_name AS driver_name, d.phone AS driver_phone, l.status
+             FROM transport_student_assignments tsa
+             INNER JOIN students st ON st.id = tsa.student_id
+             INNER JOIN users u ON u.id = st.user_id
+             INNER JOIN transport_buses b ON b.bus_id = tsa.bus_id
+             LEFT JOIN transport_routes r ON r.bus_id = b.bus_id
+             LEFT JOIN transport_stops ts ON ts.stop_id = tsa.stop_id
+             LEFT JOIN transport_staff d ON d.staff_id = b.driver_id
+             LEFT JOIN transport_live_location l ON l.bus_id = b.bus_id
+             WHERE tsa.student_id IN ($ids)
+             ORDER BY u.full_name ASC"
+        );
+
+        while ($query && $row = mysqli_fetch_assoc($query)) {
+            $items[] = $row;
+        }
+
+        return $items;
+    }
+
+    public function getRecentNotifications(int $limit = 5): array
+    {
+        if (!$this->tableExists('notifications')) {
+            return [];
+        }
+
+        $uid = (int) ($_SESSION['user']['id'] ?? 0);
+        $role = $_SESSION['user']['role'] ?? 'parent';
+        $context = notification_user_context($this->conn, $uid, $role);
+
+        return notification_recent_for_context($this->conn, $context, $limit);
+    }
+
+    
+
+    public function getHomeworkOverview(): array
+    {
+        return [
+            'configured' => false,
+            'pending' => 0,
+            'message' => 'Homework tracking is not configured in this installation.',
+        ];
     }
 
     private function loadChildren(): void
@@ -202,7 +420,7 @@ class ParentDashboardService
              ORDER BY u.full_name ASC"
         );
 
-        while ($row = mysqli_fetch_assoc($query)) {
+        while ($query && $row = mysqli_fetch_assoc($query)) {
             $this->children[] = $row;
         }
     }
@@ -218,5 +436,87 @@ class ParentDashboardService
         $row = mysqli_fetch_row($result);
 
         return (int) ($row[0] ?? 0);
+    }
+
+    private function scalarFloat(string $sql): float
+    {
+        $result = mysqli_query($this->conn, $sql);
+
+        if (!$result) {
+            return 0;
+        }
+
+        $row = mysqli_fetch_row($result);
+
+        return (float) ($row[0] ?? 0);
+    }
+
+    private function childIdList(): string
+    {
+        if (empty($this->children)) {
+            return '';
+        }
+
+        return implode(',', array_map(fn($child) => (int) $child['id'], $this->children));
+    }
+
+    private function averagePerformance(): float
+    {
+        $ids = $this->childIdList();
+
+        if ($ids === '' || !$this->tablesExist(['result_marks', 'results', 'exams'])) {
+            return 0;
+        }
+
+        $row = mysqli_fetch_assoc(mysqli_query(
+            $this->conn,
+            "SELECT AVG(CASE WHEN e.total_marks > 0 THEN (rm.marks_obtained / e.total_marks) * 100 ELSE 0 END) AS avg_pct
+             FROM result_marks rm
+             INNER JOIN results r ON r.result_id = rm.result_id
+             INNER JOIN exams e ON e.exam_id = r.exam_id
+             WHERE rm.student_id IN ($ids) AND r.status = 'published'"
+        ));
+
+        return $row ? round((float) ($row['avg_pct'] ?? 0), 1) : 0;
+    }
+
+    private function tableHasColumn(string $table, string $column): bool
+    {
+        $key = $table . '.' . $column;
+        if (isset($this->columnCache[$key])) {
+            return $this->columnCache[$key];
+        }
+        if (!$this->tableExists($table)) {
+            return $this->columnCache[$key] = false;
+        }
+
+        $safeTable = mysqli_real_escape_string($this->conn, $table);
+        $safeColumn = mysqli_real_escape_string($this->conn, $column);
+        $result = mysqli_query($this->conn, "SHOW COLUMNS FROM `$safeTable` LIKE '$safeColumn'");
+
+        return $this->columnCache[$key] = ($result && mysqli_num_rows($result) > 0);
+    }
+
+    private function tableExists(string $table): bool
+    {
+        if (isset($this->tableCache[$table])) {
+            return $this->tableCache[$table];
+        }
+
+        $safe = mysqli_real_escape_string($this->conn, $table);
+        $result = mysqli_query($this->conn, "SHOW TABLES LIKE '$safe'");
+
+        return $this->tableCache[$table] = ($result && mysqli_num_rows($result) > 0);
+    }
+
+    private function tablesExist(array $tables): bool
+    {
+        foreach ($tables as $table) {
+            if (!$this->tableExists($table)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 }

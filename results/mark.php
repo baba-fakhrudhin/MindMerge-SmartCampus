@@ -2,6 +2,9 @@
 
 include('../config/auth.php');
 include('../config/db.php');
+require_once '../shared/services/ResultsService.php';
+
+$service = new ResultsService($conn);
 
 if(
 !isset($_GET['id'])
@@ -16,154 +19,21 @@ exit;
 
 $result_id = (int)$_GET['id'];
 
-$resultQuery = mysqli_query(
+$result = $service->getResultById($result_id);
 
-$conn,
-
-"SELECT
-
-r.*,
-
-e.exam_name,
-e.total_marks,
-
-c.class_name,
-s.section_name
-
-FROM results r
-
-INNER JOIN exams e
-ON r.exam_id=e.exam_id
-
-LEFT JOIN classes c
-ON r.class_id=c.class_id
-
-LEFT JOIN sections s
-ON r.section_id=s.section_id
-
-WHERE r.result_id='$result_id'
-
-LIMIT 1"
-
-);
-
-if(mysqli_num_rows($resultQuery) == 0){
+if(!$result){
 
 header('Location:index.php');
 exit;
 
 }
 
-$result =
-mysqli_fetch_assoc(
-$resultQuery
-);
-
-if(
-
-!empty($result['class_id'])
-
-&&
-
-!empty($result['section_id'])
-
-){
-
-/*
-Specific Class + Section
-*/
-
-$students = mysqli_query(
-
-$conn,
-
-"SELECT
-
-s.id,
-s.student_id,
-
-u.full_name
-
-FROM students s
-
-INNER JOIN users u
-ON s.user_id=u.id
-
-WHERE
-
-s.class_id='".$result['class_id']."'
-
-AND
-
-s.section_id='".$result['section_id']."'
-
-ORDER BY u.full_name"
-
-);
-
+$students = $service->getStudentsForResult($result_id);
+$existingEntries = [];
+foreach($service->getEntries($result_id) as $entry){
+    $existingEntries[(int)$entry['student_id']] = $entry;
 }
-elseif(
 
-!empty($result['class_id'])
-
-){
-
-/*
-Entire Class
-*/
-
-$students = mysqli_query(
-
-$conn,
-
-"SELECT
-
-s.id,
-s.student_id,
-
-u.full_name
-
-FROM students s
-
-INNER JOIN users u
-ON s.user_id=u.id
-
-WHERE
-
-s.class_id='".$result['class_id']."'
-
-ORDER BY u.full_name"
-
-);
-
-}
-else{
-
-/*
-School Wide
-*/
-
-$students = mysqli_query(
-
-$conn,
-
-"SELECT
-
-s.id,
-s.student_id,
-
-u.full_name
-
-FROM students s
-
-INNER JOIN users u
-ON s.user_id=u.id
-
-ORDER BY u.full_name"
-
-);
-
-}
 if($_SERVER['REQUEST_METHOD']=='POST'){
 if(
 isset($_POST['marks'])
@@ -171,105 +41,16 @@ isset($_POST['marks'])
 is_array($_POST['marks'])
 ){
 
+$rows = [];
 foreach($_POST['marks'] as $student_id=>$marks){
-
-$student_id =
-(int)$student_id;
-
-$marks =
-(float)$marks;
-if($marks > $result['total_marks']){
-
-$marks = $result['total_marks'];
-
+    $rows[] = [
+        'student_id' => (int)$student_id,
+        'marks_obtained' => $marks,
+        'remarks' => $_POST['remarks'][(int)$student_id] ?? '',
+    ];
 }
 
-if($marks < 0){
-
-$marks = 0;
-
-}
-
-$remarks =
-mysqli_real_escape_string(
-
-$conn,
-
-$_POST['remarks'][$student_id]
-?? ''
-
-);
-
-$exists = mysqli_query(
-
-$conn,
-
-"SELECT mark_id
-
-FROM result_marks
-
-WHERE
-
-result_id='$result_id'
-
-AND
-
-student_id='$student_id'
-
-LIMIT 1"
-
-);
-
-if(mysqli_num_rows($exists)>0){
-
-$row =
-mysqli_fetch_assoc(
-$exists
-);
-
-mysqli_query(
-
-$conn,
-
-"UPDATE result_marks
-
-SET
-
-marks_obtained='$marks',
-remarks='$remarks'
-
-WHERE mark_id='".$row['mark_id']."'"
-
-);
-
-}
-else{
-
-mysqli_query(
-
-$conn,
-
-"INSERT INTO result_marks
-(
-result_id,
-student_id,
-marks_obtained,
-remarks
-)
-
-VALUES
-(
-'$result_id',
-'$student_id',
-'$marks',
-'$remarks'
-)"
-
-);
-
-}
-
-}
+$service->bulkSaveEntries($result_id, $rows, null);
 }
 header(
 'Location:view.php?id=' .
@@ -506,38 +287,11 @@ Remarks
 
 <?php
 
-if(mysqli_num_rows($students) > 0){
+if(count($students) > 0){
 
-while($student =
-mysqli_fetch_assoc($students)){
+foreach($students as $student){
 
-$existing =
-mysqli_fetch_assoc(
-
-mysqli_query(
-
-$conn,
-
-"SELECT
-
-marks_obtained,
-remarks
-
-FROM result_marks
-
-WHERE
-
-result_id='$result_id'
-
-AND
-
-student_id='".$student['id']."'
-
-LIMIT 1"
-
-)
-
-);
+$existing = $existingEntries[(int)$student['id']] ?? null;
 
 ?>
 

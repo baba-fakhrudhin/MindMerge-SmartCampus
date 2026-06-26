@@ -3,6 +3,8 @@
 class ResultsService
 {
     private mysqli $conn;
+    private array $tableCache = [];
+    private array $columnCache = [];
 
     public function __construct(mysqli $conn)
     {
@@ -11,12 +13,7 @@ class ResultsService
 
     public function isReady(): bool
     {
-        return $this->tableExists('results')
-            && $this->tableExists('result_entries')
-            && $this->columnExists('results', 'exam_id')
-            && $this->tableExists('exams')
-            && $this->columnExists('exams', 'exam_code')
-            && $this->columnExists('exams', 'class_id');
+        return $this->tablesExist(['results', 'result_marks', 'exams', 'students']);
     }
 
     public function getResultSets(array $scope = []): array
@@ -27,16 +24,20 @@ class ResultsService
 
         $where = ['1=1'];
 
-        if (!empty($scope['class_id'])) {
+        if (isset($scope['class_id'])) {
             $where[] = 'r.class_id = ' . (int) $scope['class_id'];
         }
 
-        if (!empty($scope['section_id'])) {
+        if (isset($scope['section_id'])) {
             $where[] = 'r.section_id = ' . (int) $scope['section_id'];
         }
 
         if (!empty($scope['exam_id'])) {
             $where[] = 'r.exam_id = ' . (int) $scope['exam_id'];
+        }
+
+        if (!empty($scope['result_id'])) {
+            $where[] = 'r.result_id = ' . (int) $scope['result_id'];
         }
 
         if (!empty($scope['published_only'])) {
@@ -49,29 +50,43 @@ class ResultsService
         }
 
         if (!empty($scope['teacher_id'])) {
-            $where[] = "EXISTS (
-                SELECT 1 FROM teacher_assignments ta
-                WHERE ta.class_id = r.class_id
-                  AND ta.section_id = r.section_id
-                  AND ta.teacher_id = " . (int) $scope['teacher_id'] . "
+            $teacherId = (int) $scope['teacher_id'];
+            $where[] = "(
+                r.class_id = 0
+                OR EXISTS (
+                    SELECT 1 FROM teacher_assignments ta
+                    WHERE ta.teacher_id = '$teacherId'
+                      AND ta.class_id = r.class_id
+                      AND (r.section_id = 0 OR ta.section_id = r.section_id)
+                )
             )";
         }
 
         $items = [];
         $query = mysqli_query(
             $this->conn,
-            "SELECT r.*, c.class_name, s.section_name,
-                    e.exam_code, e.exam_name, e.exam_date, e.exam_time,
-                    (SELECT COUNT(*) FROM result_entries re WHERE re.result_id = r.result_id) AS entry_count
+            "SELECT r.*, e.exam_name, e.exam_type, e.exam_date, e.start_time, e.end_time, e.total_marks,
+                    COALESCE(sub.subject_name, e.custom_subject, e.exam_name) AS subject_name,
+                    COALESCE(c.class_name, 'School Wide') AS class_name,
+                    COALESCE(s.section_name, 'All Sections') AS section_name,
+                    COUNT(rm.mark_id) AS entry_count,
+                    AVG(rm.marks_obtained) AS average_marks
              FROM results r
-             INNER JOIN classes c ON c.class_id = r.class_id
-             INNER JOIN sections s ON s.section_id = r.section_id
-             LEFT JOIN exams e ON e.exam_id = r.exam_id
+             INNER JOIN exams e ON e.exam_id = r.exam_id
+             LEFT JOIN subjects sub ON sub.subject_id = e.subject_id
+             LEFT JOIN classes c ON c.class_id = NULLIF(r.class_id, 0)
+             LEFT JOIN sections s ON s.section_id = NULLIF(r.section_id, 0)
+             LEFT JOIN result_marks rm ON rm.result_id = r.result_id
              WHERE " . implode(' AND ', $where) . "
+             GROUP BY r.result_id, e.exam_name, e.exam_type, e.exam_date, e.start_time, e.end_time,
+                      e.total_marks, subject_name, c.class_name, s.section_name
              ORDER BY COALESCE(e.exam_date, DATE(r.created_at)) DESC, r.created_at DESC"
         );
 
         while ($query && $row = mysqli_fetch_assoc($query)) {
+            $row['exam_code'] = 'EXM-' . (int) $row['exam_id'];
+            $row['exam_time'] = $row['start_time'] ?? null;
+            $row['academic_year'] = !empty($row['exam_date']) ? date('Y', strtotime($row['exam_date'])) : date('Y');
             $items[] = $row;
         }
 
@@ -84,51 +99,57 @@ class ResultsService
             return null;
         }
 
-        return mysqli_fetch_assoc(mysqli_query(
+        $items = $this->getResultSets(['result_id' => $result_id]);
+        if (!empty($items)) {
+            return $items[0];
+        }
+
+        $row = mysqli_fetch_assoc(mysqli_query(
             $this->conn,
-            "SELECT r.*, c.class_name, s.section_name,
-                    e.exam_code, e.exam_name, e.exam_date, e.exam_time
+            "SELECT r.*, e.exam_name, e.exam_type, e.exam_date, e.start_time, e.end_time, e.total_marks,
+                    COALESCE(c.class_name, 'School Wide') AS class_name,
+                    COALESCE(s.section_name, 'All Sections') AS section_name
              FROM results r
-             INNER JOIN classes c ON c.class_id = r.class_id
-             INNER JOIN sections s ON s.section_id = r.section_id
-             LEFT JOIN exams e ON e.exam_id = r.exam_id
+             INNER JOIN exams e ON e.exam_id = r.exam_id
+             LEFT JOIN classes c ON c.class_id = NULLIF(r.class_id, 0)
+             LEFT JOIN sections s ON s.section_id = NULLIF(r.section_id, 0)
              WHERE r.result_id = '$result_id'
              LIMIT 1"
-        )) ?: null;
+        ));
+
+        if (!$row) {
+            return null;
+        }
+
+        $row['exam_code'] = 'EXM-' . (int) $row['exam_id'];
+        $row['exam_time'] = $row['start_time'] ?? null;
+        $row['academic_year'] = !empty($row['exam_date']) ? date('Y', strtotime($row['exam_date'])) : date('Y');
+
+        return $row;
     }
 
-    public function createResultFromExam(int $exam_id, int $created_by): int
+    public function createResultFromExam(int $exam_id, int $created_by = 0): int
     {
         if (!$this->isReady() || $exam_id <= 0) {
             return 0;
         }
 
-        $exam = mysqli_fetch_assoc(mysqli_query(
-            $this->conn,
-            "SELECT * FROM exams WHERE exam_id = '$exam_id' LIMIT 1"
-        ));
-
+        $exam = mysqli_fetch_assoc(mysqli_query($this->conn, "SELECT * FROM exams WHERE exam_id = '$exam_id' LIMIT 1"));
         if (!$exam) {
             return 0;
         }
 
-        $existing = mysqli_fetch_assoc(mysqli_query(
-            $this->conn,
-            "SELECT result_id FROM results WHERE exam_id = '$exam_id' LIMIT 1"
-        ));
-
+        $existing = mysqli_fetch_assoc(mysqli_query($this->conn, "SELECT result_id FROM results WHERE exam_id = '$exam_id' LIMIT 1"));
         if ($existing) {
             return (int) $existing['result_id'];
         }
 
-        $class_id = (int) $exam['class_id'];
-        $section_id = (int) $exam['section_id'];
-        $year = mysqli_real_escape_string($this->conn, $exam['academic_year'] ?? '');
-
+        $classId = (int) ($exam['class_id'] ?? 0);
+        $sectionId = (int) ($exam['section_id'] ?? 0);
         mysqli_query(
             $this->conn,
-            "INSERT INTO results (exam_id, class_id, section_id, academic_year, semester, result_type, status, created_by, created_at)
-             VALUES ('$exam_id', '$class_id', '$section_id', '$year', '', 'exam', 'draft', '$created_by', NOW())"
+            "INSERT INTO results (exam_id, class_id, section_id, status, created_at)
+             VALUES ('$exam_id', '$classId', '$sectionId', 'draft', NOW())"
         );
 
         return (int) mysqli_insert_id($this->conn);
@@ -136,45 +157,54 @@ class ResultsService
 
     public function deleteResult(int $result_id): bool
     {
-        return (bool) mysqli_query($this->conn, "DELETE FROM results WHERE result_id='$result_id'");
+        if (!$this->isReady() || $result_id <= 0) {
+            return false;
+        }
+
+        mysqli_query($this->conn, "DELETE FROM result_marks WHERE result_id = '$result_id'");
+        return (bool) mysqli_query($this->conn, "DELETE FROM results WHERE result_id = '$result_id'");
     }
 
     public function publishResult(int $result_id): bool
     {
-        return (bool) mysqli_query(
-            $this->conn,
-            "UPDATE results SET status='published', published_at=NOW(), updated_at=NOW()
-             WHERE result_id='$result_id'"
-        );
+        if (!$this->isReady() || $result_id <= 0 || count($this->getEntries($result_id)) === 0) {
+            return false;
+        }
+
+        return (bool) mysqli_query($this->conn, "UPDATE results SET status='published', published_at=NOW() WHERE result_id='$result_id'");
     }
 
     public function unpublishResult(int $result_id): bool
     {
-        return (bool) mysqli_query(
-            $this->conn,
-            "UPDATE results SET status='draft', published_at=NULL, updated_at=NOW()
-             WHERE result_id='$result_id'"
-        );
+        if (!$this->isReady() || $result_id <= 0) {
+            return false;
+        }
+
+        return (bool) mysqli_query($this->conn, "UPDATE results SET status='draft', published_at=NULL WHERE result_id='$result_id'");
     }
 
     public function getStudentsForResult(int $result_id): array
     {
         $result = $this->getResultById($result_id);
-
         if (!$result) {
             return [];
         }
 
-        $class_id = (int) $result['class_id'];
-        $section_id = (int) $result['section_id'];
-        $students = [];
+        $where = ['1=1'];
+        if ((int) $result['class_id'] > 0) {
+            $where[] = 'st.class_id = ' . (int) $result['class_id'];
+        }
+        if ((int) $result['section_id'] > 0) {
+            $where[] = 'st.section_id = ' . (int) $result['section_id'];
+        }
 
+        $students = [];
         $query = mysqli_query(
             $this->conn,
             "SELECT st.id, st.student_id, u.full_name
              FROM students st
              INNER JOIN users u ON u.id = st.user_id
-             WHERE st.class_id = '$class_id' AND st.section_id = '$section_id'
+             WHERE " . implode(' AND ', $where) . "
              ORDER BY u.full_name ASC"
         );
 
@@ -188,29 +218,15 @@ class ResultsService
     public function getSubjectsForResult(int $result_id): array
     {
         $result = $this->getResultById($result_id);
-
         if (!$result) {
             return [];
         }
 
-        $class_id = (int) $result['class_id'];
-        $section_id = (int) $result['section_id'];
-        $subjects = [];
-
-        $query = mysqli_query(
-            $this->conn,
-            "SELECT DISTINCT sub.subject_id, sub.subject_name, sub.subject_code
-             FROM teacher_assignments ta
-             INNER JOIN subjects sub ON sub.subject_id = ta.subject_id
-             WHERE ta.class_id = '$class_id' AND ta.section_id = '$section_id'
-             ORDER BY sub.subject_name ASC"
-        );
-
-        while ($query && $row = mysqli_fetch_assoc($query)) {
-            $subjects[] = $row;
-        }
-
-        return $subjects;
+        return [[
+            'subject_id' => (int) ($result['exam_id'] ?? 0),
+            'subject_name' => $result['subject_name'] ?? $result['exam_name'] ?? 'Exam',
+            'subject_code' => 'EXM-' . (int) ($result['exam_id'] ?? 0),
+        ]];
     }
 
     public function getEntries(int $result_id, ?int $subject_id = null): array
@@ -219,27 +235,28 @@ class ResultsService
             return [];
         }
 
-        $where = ["re.result_id = '$result_id'"];
-
-        if ($subject_id) {
-            $where[] = 're.subject_id = ' . (int) $subject_id;
-        }
-
         $entries = [];
         $query = mysqli_query(
             $this->conn,
-            "SELECT re.*, u.full_name AS student_name, st.student_id AS student_code,
-                    sub.subject_name, t.teacher_id AS teacher_code
-             FROM result_entries re
-             INNER JOIN students st ON st.id = re.student_id
+            "SELECT rm.mark_id AS entry_id, rm.*, u.full_name AS student_name, st.student_id AS student_code,
+                    e.exam_id AS subject_id, COALESCE(sub.subject_name, e.custom_subject, e.exam_name) AS subject_name,
+                    e.total_marks AS max_marks,
+                    CASE WHEN e.total_marks > 0 THEN ROUND((rm.marks_obtained / e.total_marks) * 100, 2) ELSE 0 END AS percentage
+             FROM result_marks rm
+             INNER JOIN results r ON r.result_id = rm.result_id
+             INNER JOIN exams e ON e.exam_id = r.exam_id
+             INNER JOIN students st ON st.id = rm.student_id
              INNER JOIN users u ON u.id = st.user_id
-             INNER JOIN subjects sub ON sub.subject_id = re.subject_id
-             LEFT JOIN teachers t ON t.id = re.teacher_id
-             WHERE " . implode(' AND ', $where) . "
-             ORDER BY u.full_name ASC, sub.subject_name ASC"
+             LEFT JOIN subjects sub ON sub.subject_id = e.subject_id
+             WHERE rm.result_id = '$result_id'
+             ORDER BY u.full_name ASC"
         );
 
         while ($query && $row = mysqli_fetch_assoc($query)) {
+            $row['total_marks'] = $row['marks_obtained'];
+            $gradeInfo = $this->resolveGrade((float) $row['percentage']);
+            $row['grade'] = $gradeInfo['grade_name'];
+            $row['grade_point'] = null;
             $entries[] = $row;
         }
 
@@ -248,86 +265,72 @@ class ResultsService
 
     public function saveEntry(int $result_id, int $student_id, int $subject_id, array $marks, ?int $teacher_id = null): bool
     {
-        $internal = max(0, (float) ($marks['internal_marks'] ?? 0));
-        $external = max(0, (float) ($marks['external_marks'] ?? 0));
-        $lab = max(0, (float) ($marks['lab_marks'] ?? 0));
-        $attendance = max(0, (float) ($marks['attendance_marks'] ?? 0));
-        $total = $internal + $external + $lab + $attendance;
-        $gradeInfo = $this->resolveGrade($total);
-        $grade = mysqli_real_escape_string($this->conn, $gradeInfo['grade_name'] ?? '');
-        $grade_point = $gradeInfo['grade_point'] ?? null;
-        $grade_point_sql = $grade_point !== null ? "'" . (float) $grade_point . "'" : 'NULL';
-        $teacher_sql = $teacher_id ? "'" . (int) $teacher_id . "'" : 'NULL';
+        if (!$this->isReady() || $result_id <= 0 || $student_id <= 0) {
+            return false;
+        }
 
-        $existing = mysqli_query(
+        $result = $this->getResultById($result_id);
+        if (!$result) {
+            return false;
+        }
+
+        $max = max(0, (float) ($result['total_marks'] ?? 100));
+        $value = (float) ($marks['marks_obtained'] ?? $marks['total_marks'] ?? $marks['external_marks'] ?? 0);
+        $value = max(0, min($max, $value));
+        $remarks = mysqli_real_escape_string($this->conn, (string) ($marks['remarks'] ?? ''));
+
+        $existing = mysqli_fetch_assoc(mysqli_query(
             $this->conn,
-            "SELECT entry_id FROM result_entries
-             WHERE result_id='$result_id' AND student_id='$student_id' AND subject_id='$subject_id'
-             LIMIT 1"
-        );
+            "SELECT mark_id FROM result_marks WHERE result_id='$result_id' AND student_id='$student_id' LIMIT 1"
+        ));
 
-        if ($existing && mysqli_num_rows($existing) > 0) {
-            $row = mysqli_fetch_assoc($existing);
-
+        if ($existing) {
             return (bool) mysqli_query(
                 $this->conn,
-                "UPDATE result_entries SET
-                    internal_marks='$internal', external_marks='$external',
-                    lab_marks='$lab', attendance_marks='$attendance',
-                    total_marks='$total', grade='$grade', grade_point=$grade_point_sql,
-                    teacher_id=$teacher_sql, updated_at=NOW()
-                 WHERE entry_id='" . (int) $row['entry_id'] . "'"
+                "UPDATE result_marks SET marks_obtained='$value', remarks='$remarks' WHERE mark_id='" . (int) $existing['mark_id'] . "'"
             );
         }
 
         return (bool) mysqli_query(
             $this->conn,
-            "INSERT INTO result_entries (
-                result_id, student_id, subject_id, teacher_id,
-                internal_marks, external_marks, lab_marks, attendance_marks,
-                total_marks, grade, grade_point, created_at
-             ) VALUES (
-                '$result_id', '$student_id', '$subject_id', $teacher_sql,
-                '$internal', '$external', '$lab', '$attendance',
-                '$total', '$grade', $grade_point_sql, NOW()
-             )"
+            "INSERT INTO result_marks (result_id, student_id, marks_obtained, remarks, created_at)
+             VALUES ('$result_id', '$student_id', '$value', '$remarks', NOW())"
         );
     }
 
     public function bulkSaveEntries(int $result_id, array $rows, ?int $teacher_id = null): int
     {
         $saved = 0;
-
         foreach ($rows as $row) {
-            if ($this->saveEntry(
-                $result_id,
-                (int) ($row['student_id'] ?? 0),
-                (int) ($row['subject_id'] ?? 0),
-                $row,
-                $teacher_id
-            )) {
+            if ($this->saveEntry($result_id, (int) ($row['student_id'] ?? 0), 0, $row, $teacher_id)) {
                 $saved++;
             }
         }
-
         return $saved;
     }
 
-    public function resolveGrade(float $total_marks): array
+    public function resolveGrade(float $percentage): array
     {
-        if (!$this->tableExists('grading_system')) {
-            return ['grade_name' => '', 'grade_point' => null];
+        if ($this->tableExists('grading_system')) {
+            $pct = (float) $percentage;
+            $row = mysqli_fetch_assoc(mysqli_query(
+                $this->conn,
+                "SELECT grade_name, grade_point FROM grading_system
+                 WHERE status='active' AND $pct BETWEEN min_marks AND max_marks
+                 ORDER BY min_marks DESC LIMIT 1"
+            ));
+            if ($row) {
+                return $row;
+            }
         }
 
-        $total = (float) $total_marks;
-        $row = mysqli_fetch_assoc(mysqli_query(
-            $this->conn,
-            "SELECT grade_name, grade_point FROM grading_system
-             WHERE status='active' AND $total BETWEEN min_marks AND max_marks
-             ORDER BY min_marks DESC LIMIT 1"
-        ));
-
-        return $row ?: ['grade_name' => '', 'grade_point' => null];
+        if ($percentage >= 90) return ['grade_name' => 'A+', 'grade_point' => null];
+        if ($percentage >= 80) return ['grade_name' => 'A', 'grade_point' => null];
+        if ($percentage >= 70) return ['grade_name' => 'B+', 'grade_point' => null];
+        if ($percentage >= 60) return ['grade_name' => 'B', 'grade_point' => null];
+        if ($percentage >= 50) return ['grade_name' => 'C', 'grade_point' => null];
+        if ($percentage >= 35) return ['grade_name' => 'D', 'grade_point' => null];
+        return ['grade_name' => 'F', 'grade_point' => null];
     }
 
     public function getStudentResults(int $student_db_id): array
@@ -339,102 +342,77 @@ class ResultsService
         $items = [];
         $query = mysqli_query(
             $this->conn,
-            "SELECT r.result_id, r.academic_year, r.semester, r.result_type, r.status,
-                    e.exam_code, e.exam_name, e.exam_date,
-                    sub.subject_name, re.total_marks, re.grade, re.grade_point,
-                    re.internal_marks, re.external_marks, re.lab_marks, re.attendance_marks
-             FROM result_entries re
-             INNER JOIN results r ON r.result_id = re.result_id
-             LEFT JOIN exams e ON e.exam_id = r.exam_id
-             INNER JOIN subjects sub ON sub.subject_id = re.subject_id
-             WHERE re.student_id = '$student_db_id' AND r.status = 'published'
-             ORDER BY COALESCE(e.exam_date, DATE(r.created_at)) DESC, sub.subject_name ASC"
+            "SELECT r.result_id, r.status, r.published_at, r.created_at,
+                    e.exam_id, e.exam_name, e.exam_type, e.exam_date, e.total_marks AS max_marks,
+                    COALESCE(sub.subject_name, e.custom_subject, e.exam_name) AS subject_name,
+                    rm.marks_obtained, rm.remarks,
+                    CASE WHEN e.total_marks > 0 THEN ROUND((rm.marks_obtained / e.total_marks) * 100, 2) ELSE 0 END AS percentage
+             FROM result_marks rm
+             INNER JOIN results r ON r.result_id = rm.result_id
+             INNER JOIN exams e ON e.exam_id = r.exam_id
+             LEFT JOIN subjects sub ON sub.subject_id = e.subject_id
+             WHERE rm.student_id = '$student_db_id' AND r.status = 'published'
+             ORDER BY COALESCE(e.exam_date, DATE(r.created_at)) DESC, r.published_at DESC"
         );
 
         while ($query && $row = mysqli_fetch_assoc($query)) {
+            $gradeInfo = $this->resolveGrade((float) $row['percentage']);
+            $row['exam_code'] = 'EXM-' . (int) $row['exam_id'];
+            $row['academic_year'] = !empty($row['exam_date']) ? date('Y', strtotime($row['exam_date'])) : date('Y', strtotime($row['created_at']));
+            $row['total_marks'] = $row['marks_obtained'];
+            $row['grade'] = $gradeInfo['grade_name'];
+            $row['grade_point'] = null;
             $items[] = $row;
         }
 
         return $items;
     }
 
+    public function getLatestGpa(int $student_db_id): ?array
+    {
+        $summary = $this->getLatestPerformance($student_db_id);
+        if ($summary === null) {
+            return null;
+        }
+
+        return [
+            'academic_year' => $summary['academic_year'],
+            'semester' => '',
+            'gpa' => null,
+            'overall_gpa' => null,
+            'percentage' => $summary['percentage'],
+            'grade' => $summary['grade'],
+        ];
+    }
+
     public function calculateSemesterGpa(int $student_db_id, string $academic_year, string $semester): ?float
     {
-        if ($student_db_id <= 0) {
-            return null;
-        }
-
-        $year = mysqli_real_escape_string($this->conn, $academic_year);
-        $sem = mysqli_real_escape_string($this->conn, $semester);
-
-        $row = mysqli_fetch_assoc(mysqli_query(
-            $this->conn,
-            "SELECT AVG(re.grade_point) AS gpa, COUNT(*) AS cnt
-             FROM result_entries re
-             INNER JOIN results r ON r.result_id = re.result_id
-             WHERE re.student_id = '$student_db_id'
-               AND r.status = 'published'
-               AND r.academic_year = '$year'
-               AND r.semester = '$sem'
-               AND re.grade_point IS NOT NULL"
-        ));
-
-        if (!$row || (int) $row['cnt'] === 0) {
-            return null;
-        }
-
-        return round((float) $row['gpa'], 2);
+        return null;
     }
 
     public function calculateOverallGpa(int $student_db_id): ?float
     {
-        if ($student_db_id <= 0) {
-            return null;
-        }
-
-        $row = mysqli_fetch_assoc(mysqli_query(
-            $this->conn,
-            "SELECT AVG(re.grade_point) AS gpa, COUNT(*) AS cnt
-             FROM result_entries re
-             INNER JOIN results r ON r.result_id = re.result_id
-             WHERE re.student_id = '$student_db_id'
-               AND r.status = 'published'
-               AND re.grade_point IS NOT NULL"
-        ));
-
-        if (!$row || (int) $row['cnt'] === 0) {
-            return null;
-        }
-
-        return round((float) $row['gpa'], 2);
+        return null;
     }
 
-    public function getLatestGpa(int $student_db_id): ?array
+    public function getLatestPerformance(int $student_db_id): ?array
     {
         $results = $this->getStudentResults($student_db_id);
-
         if (empty($results)) {
             return null;
         }
 
         $latest = $results[0];
-        $gpa = $this->calculateSemesterGpa(
-            $student_db_id,
-            $latest['academic_year'],
-            $latest['semester'] ?? ''
-        );
-
         return [
             'academic_year' => $latest['academic_year'],
-            'semester'      => $latest['semester'] ?? '',
-            'gpa'           => $gpa,
-            'overall_gpa'   => $this->calculateOverallGpa($student_db_id),
+            'percentage' => (float) $latest['percentage'],
+            'grade' => $latest['grade'],
         ];
     }
 
     public function getPerformanceTrend(int $student_db_id): array
     {
-        if ($student_db_id <= 0) {
+        if (!$this->isReady() || $student_db_id <= 0) {
             return ['labels' => [], 'values' => []];
         }
 
@@ -442,21 +420,18 @@ class ResultsService
         $values = [];
         $query = mysqli_query(
             $this->conn,
-            "SELECT COALESCE(e.exam_name, CONCAT(r.academic_year, ' ', COALESCE(r.semester, 'Exam'))) AS label,
-                    AVG(re.grade_point) AS avg_gpa,
-                    COALESCE(e.exam_date, DATE(r.created_at)) AS sort_date
-             FROM result_entries re
-             INNER JOIN results r ON r.result_id = re.result_id
-             LEFT JOIN exams e ON e.exam_id = r.exam_id
-             WHERE re.student_id = '$student_db_id' AND r.status = 'published'
-               AND re.grade_point IS NOT NULL
-             GROUP BY r.result_id, label, sort_date
+            "SELECT e.exam_name, e.total_marks, rm.marks_obtained, COALESCE(e.exam_date, DATE(r.created_at)) AS sort_date
+             FROM result_marks rm
+             INNER JOIN results r ON r.result_id = rm.result_id
+             INNER JOIN exams e ON e.exam_id = r.exam_id
+             WHERE rm.student_id = '$student_db_id' AND r.status = 'published'
              ORDER BY sort_date ASC"
         );
 
         while ($query && $row = mysqli_fetch_assoc($query)) {
-            $labels[] = $row['label'];
-            $values[] = round((float) $row['avg_gpa'], 2);
+            $total = (float) ($row['total_marks'] ?: 100);
+            $labels[] = $row['exam_name'];
+            $values[] = $total > 0 ? round(((float) $row['marks_obtained'] / $total) * 100, 1) : 0;
         }
 
         return ['labels' => $labels, 'values' => $values];
@@ -465,20 +440,18 @@ class ResultsService
     public function exportEntriesCsv(int $result_id): string
     {
         $entries = $this->getEntries($result_id);
-        $lines = ['Student ID,Student Name,Subject,Internal,External,Lab,Attendance,Total,Grade,GPA'];
+        $lines = ['Student ID,Student Name,Exam,Marks,Max Marks,Percentage,Grade,Remarks'];
 
         foreach ($entries as $e) {
             $lines[] = implode(',', [
                 '"' . str_replace('"', '""', $e['student_code'] ?? '') . '"',
                 '"' . str_replace('"', '""', $e['student_name'] ?? '') . '"',
                 '"' . str_replace('"', '""', $e['subject_name'] ?? '') . '"',
-                $e['internal_marks'],
-                $e['external_marks'],
-                $e['lab_marks'],
-                $e['attendance_marks'],
-                $e['total_marks'],
+                $e['marks_obtained'],
+                $e['max_marks'],
+                $e['percentage'],
                 '"' . ($e['grade'] ?? '') . '"',
-                $e['grade_point'] ?? '',
+                '"' . str_replace('"', '""', $e['remarks'] ?? '') . '"',
             ]);
         }
 
@@ -490,12 +463,12 @@ class ResultsService
         $result = $this->getResultById($result_id);
         $entries = $this->getEntries($result_id);
         $title = htmlspecialchars(($result['exam_name'] ?? 'Result') . ' Result Sheet');
-        $html = '<table border="1"><thead><tr><th colspan="10">' . $title . '</th></tr>';
-        $html .= '<tr><th>Student ID</th><th>Student Name</th><th>Subject</th><th>Internal</th><th>External</th><th>Lab</th><th>Attendance</th><th>Total</th><th>Grade</th><th>GPA</th></tr></thead><tbody>';
+        $html = '<table border="1"><thead><tr><th colspan="8">' . $title . '</th></tr>';
+        $html .= '<tr><th>Student ID</th><th>Student Name</th><th>Exam</th><th>Marks</th><th>Max Marks</th><th>Percentage</th><th>Grade</th><th>Remarks</th></tr></thead><tbody>';
 
         foreach ($entries as $e) {
             $html .= '<tr>';
-            foreach (['student_code', 'student_name', 'subject_name', 'internal_marks', 'external_marks', 'lab_marks', 'attendance_marks', 'total_marks', 'grade', 'grade_point'] as $key) {
+            foreach (['student_code', 'student_name', 'subject_name', 'marks_obtained', 'max_marks', 'percentage', 'grade', 'remarks'] as $key) {
                 $html .= '<td>' . htmlspecialchars((string) ($e[$key] ?? '')) . '</td>';
             }
             $html .= '</tr>';
@@ -509,13 +482,13 @@ class ResultsService
         $result = $this->getResultById($result_id);
         $entries = $this->getEntries($result_id);
         $lines = [
-            ($result['exam_name'] ?? 'Result Sheet') . ' - ' . ($result['exam_code'] ?? ('Result #' . $result_id)),
+            ($result['exam_name'] ?? 'Result Sheet') . ' - Result #' . $result_id,
             ($result['class_name'] ?? '') . ' / ' . ($result['section_name'] ?? ''),
             '',
         ];
 
         foreach ($entries as $e) {
-            $lines[] = ($e['student_code'] ?? '') . '  ' . ($e['student_name'] ?? '') . '  ' . ($e['subject_name'] ?? '') . '  Total: ' . ($e['total_marks'] ?? '0') . '  Grade: ' . ($e['grade'] ?? '-');
+            $lines[] = ($e['student_code'] ?? '') . '  ' . ($e['student_name'] ?? '') . '  Marks: ' . ($e['marks_obtained'] ?? '0') . '/' . ($e['max_marks'] ?? '0') . '  Grade: ' . ($e['grade'] ?? '-');
         }
 
         return $this->buildSimplePdf($lines);
@@ -573,18 +546,41 @@ class ResultsService
 
     private function tableExists(string $table): bool
     {
-        $table = mysqli_real_escape_string($this->conn, $table);
-        $result = mysqli_query($this->conn, "SHOW TABLES LIKE '$table'");
+        if (isset($this->tableCache[$table])) {
+            return $this->tableCache[$table];
+        }
 
-        return $result && mysqli_num_rows($result) > 0;
+        $safe = mysqli_real_escape_string($this->conn, $table);
+        $result = mysqli_query($this->conn, "SHOW TABLES LIKE '$safe'");
+
+        return $this->tableCache[$table] = ($result && mysqli_num_rows($result) > 0);
     }
 
     private function columnExists(string $table, string $column): bool
     {
-        $table = mysqli_real_escape_string($this->conn, $table);
-        $column = mysqli_real_escape_string($this->conn, $column);
-        $result = mysqli_query($this->conn, "SHOW COLUMNS FROM `$table` LIKE '$column'");
+        $key = $table . '.' . $column;
+        if (isset($this->columnCache[$key])) {
+            return $this->columnCache[$key];
+        }
+        if (!$this->tableExists($table)) {
+            return $this->columnCache[$key] = false;
+        }
 
-        return $result && mysqli_num_rows($result) > 0;
+        $safeTable = mysqli_real_escape_string($this->conn, $table);
+        $safeColumn = mysqli_real_escape_string($this->conn, $column);
+        $result = mysqli_query($this->conn, "SHOW COLUMNS FROM `$safeTable` LIKE '$safeColumn'");
+
+        return $this->columnCache[$key] = ($result && mysqli_num_rows($result) > 0);
+    }
+
+    private function tablesExist(array $tables): bool
+    {
+        foreach ($tables as $table) {
+            if (!$this->tableExists($table)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 }

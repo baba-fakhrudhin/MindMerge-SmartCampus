@@ -168,6 +168,14 @@ function permission_module_registry(): array
             'permission' => 'results',
             'match'      => '/student/results/',
         ],
+        'student_transport' => [
+            'label'      => 'Transport',
+            'icon'       => 'fa-bus',
+            'url'        => 'student/transport/index.php',
+            'action'     => 'view',
+            'permission' => 'transport',
+            'match'      => '/student/transport/',
+        ],
         'digital_id' => [
             'label'      => 'Digital ID',
             'icon'       => 'fa-id-card',
@@ -200,6 +208,14 @@ function permission_module_registry(): array
             'action'     => 'view',
             'permission' => 'attendance',
             'match'      => '/parent/attendance/',
+        ],
+        'parent_transport' => [
+            'label'      => 'Transport',
+            'icon'       => 'fa-bus',
+            'url'        => 'parent/transport/index.php',
+            'action'     => 'view',
+            'permission' => 'transport',
+            'match'      => '/parent/transport/',
         ],
         'notifications' => [
             'label'  => 'Notifications',
@@ -439,13 +455,13 @@ function permission_portal_menu_groups(): array
             ['label' => 'General', 'items' => ['profile', 'dashboard']],
             ['label' => 'Academics', 'items' => ['student_results']],
             ['label' => 'Scheduling', 'items' => ['student_timetable']],
-            ['label' => 'Operations', 'items' => ['student_attendance', 'notifications', 'exams', 'transport']],
+            ['label' => 'Operations', 'items' => ['student_attendance', 'notifications', 'exams', 'student_transport']],
             ['label' => 'Utilities', 'items' => ['digital_id']],
         ],
         'parent' => [
             ['label' => 'General', 'items' => ['profile', 'dashboard']],
             ['label' => 'Academics', 'items' => ['parent_children', 'parent_results']],
-            ['label' => 'Operations', 'items' => ['parent_attendance', 'notifications', 'exams', 'transport']],
+            ['label' => 'Operations', 'items' => ['parent_attendance', 'notifications', 'exams', 'parent_transport']],
         ],'driver' => [
 
                 [
@@ -618,6 +634,12 @@ function permission_menu_path_groups(): array
         'parent_attendance' => [
             '#/parent/attendance/#',
         ],
+        'student_transport' => [
+            '#/student/transport/#',
+        ],
+        'parent_transport' => [
+            '#/parent/transport/#',
+        ],
         'notifications' => [
             '#/notifications/#',
         ],
@@ -725,6 +747,7 @@ function permission_resolve_route(string $uri, string $script): ?array
         ['pattern' => '#/student/attendance/#',          'module' => 'attendance', 'action' => 'view'],
         ['pattern' => '#/student/timetable/#',          'module' => 'timetables', 'action' => 'view'],
         ['pattern' => '#/student/results/#',            'module' => 'results', 'action' => 'view'],
+        ['pattern' => '#/student/transport/#',          'module' => 'transport', 'action' => 'view'],
         ['pattern' => '#/student/digital-id/#',         'module' => 'profile', 'action' => 'view'],
         ['pattern' => '#/student/profile/print#',       'module' => 'profile', 'action' => 'view', 'redirect' => 'profile/print.php'],
         ['pattern' => '#/student/profile/#',             'module' => 'profile', 'action' => 'view', 'redirect' => 'profile/index.php'],
@@ -732,6 +755,7 @@ function permission_resolve_route(string $uri, string $script): ?array
         ['pattern' => '#/parent/children/#',            'module' => 'students', 'action' => 'view'],
         ['pattern' => '#/parent/attendance/#',          'module' => 'attendance', 'action' => 'view'],
         ['pattern' => '#/parent/results/#',              'module' => 'results', 'action' => 'view'],
+        ['pattern' => '#/parent/transport/#',            'module' => 'transport', 'action' => 'view'],
         ['pattern' => '#/parent/profile/print#',         'module' => 'profile', 'action' => 'view', 'redirect' => 'profile/print.php'],
         ['pattern' => '#/parent/profile/#',              'module' => 'profile', 'action' => 'view', 'redirect' => 'profile/index.php'],
 

@@ -364,3 +364,80 @@ function showFieldError(field, message) {
 
     error.textContent = message;
 }
+
+/* ==========================================
+   DASHBOARD STAT ANIMATION
+========================================== */
+
+document.addEventListener('DOMContentLoaded', () => {
+
+    const values = document.querySelectorAll('.stat-value');
+
+    if (!values.length || !('IntersectionObserver' in window)) {
+        return;
+    }
+
+    const parseValue = (text) => {
+        const cleaned = text.replace(/,/g, '');
+        const match = cleaned.match(/-?\d+(\.\d+)?/);
+
+        if (!match) {
+            return null;
+        }
+
+        return {
+            value: Number(match[0]),
+            decimals: (match[0].split('.')[1] || '').length,
+            prefix: text.slice(0, match.index),
+            suffix: text.slice((match.index || 0) + match[0].length)
+        };
+    };
+
+    const formatValue = (number, decimals, prefix, suffix) => {
+        const formatted = number.toLocaleString(undefined, {
+            minimumFractionDigits: decimals,
+            maximumFractionDigits: decimals
+        });
+
+        return `${prefix}${formatted}${suffix}`;
+    };
+
+    const animate = (element) => {
+        const parsed = parseValue(element.textContent.trim());
+
+        if (!parsed || element.dataset.animated === 'true') {
+            return;
+        }
+
+        element.dataset.animated = 'true';
+        const duration = 900 + Math.min(600, Math.abs(parsed.value) * 8);
+        const start = performance.now();
+
+        const tick = (now) => {
+            const progress = Math.min(1, (now - start) / duration);
+            const eased = 1 - Math.pow(1 - progress, 3);
+            const current = parsed.value * eased;
+
+            element.textContent = formatValue(current, parsed.decimals, parsed.prefix, parsed.suffix);
+
+            if (progress < 1) {
+                requestAnimationFrame(tick);
+            } else {
+                element.textContent = formatValue(parsed.value, parsed.decimals, parsed.prefix, parsed.suffix);
+            }
+        };
+
+        requestAnimationFrame(tick);
+    };
+
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                animate(entry.target);
+                observer.unobserve(entry.target);
+            }
+        });
+    }, { threshold: 0.35 });
+
+    values.forEach(value => observer.observe(value));
+});

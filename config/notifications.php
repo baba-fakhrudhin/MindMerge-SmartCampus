@@ -812,6 +812,31 @@ function notification_unread_count(mysqli $conn, array $context): int
     return (int) ($row['total'] ?? 0);
 }
 
+/**
+ * Recent notifications visible to a specific user context.
+ */
+function notification_recent_for_context(mysqli $conn, array $context, int $limit = 5): array
+{
+    $limit = max(1, min(25, $limit));
+    $where = notification_visibility_where($conn, $context);
+    $items = [];
+
+    $query = mysqli_query(
+        $conn,
+        "SELECT n.id, n.title, n.message, n.type AS notification_type, n.created_at
+         FROM notifications n
+         WHERE $where
+         ORDER BY n.created_at DESC
+         LIMIT $limit"
+    );
+
+    while ($query && $row = mysqli_fetch_assoc($query)) {
+        $items[] = $row;
+    }
+
+    return $items;
+}
+
 
 /**
  * Check if optional column exists (for gradual schema upgrades).

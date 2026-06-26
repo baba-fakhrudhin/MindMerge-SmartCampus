@@ -20,6 +20,16 @@ foreach ($parentService->getChildren() as $child) {
     }
 }
 
+function e($value): string
+{
+    return htmlspecialchars((string) ($value ?? ''), ENT_QUOTES, 'UTF-8');
+}
+
+function result_date($value, $fallback): string
+{
+    return $value ? date('M j, Y', strtotime($value)) : e($fallback ?: '-');
+}
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -42,20 +52,20 @@ foreach ($parentService->getChildren() as $child) {
 <div class="dashboard-section">
 <div class="table-responsive">
 <table class="custom-table">
-<thead><tr><th>Child</th><th>Exam ID</th><th>Exam</th><th>Date</th><th>Subject</th><th>Total</th><th>Grade</th><th>GPA</th></tr></thead>
+<thead><tr><th>Child</th><th>Exam ID</th><th>Exam</th><th>Date</th><th>Subject</th><th>Marks</th><th>Percentage</th><th>Grade</th></tr></thead>
 <tbody>
 <?php if (empty($rows)) { ?>
 <tr><td colspan="8"><div class="empty-state"><i class="fa-solid fa-chart-column"></i><h3>No published results</h3><p>Published child exam results will appear here.</p></div></td></tr>
 <?php } else { foreach ($rows as $row) { ?>
 <tr>
-<td><?php echo htmlspecialchars($row['child_name']); ?></td>
-<td><strong><?php echo htmlspecialchars($row['exam_code'] ?? 'Legacy'); ?></strong></td>
-<td><?php echo htmlspecialchars($row['exam_name'] ?? 'Result Sheet'); ?></td>
-<td><?php echo !empty($row['exam_date']) ? date('M j, Y', strtotime($row['exam_date'])) : htmlspecialchars($row['academic_year']); ?></td>
-<td><?php echo htmlspecialchars($row['subject_name']); ?></td>
-<td><?php echo htmlspecialchars($row['total_marks']); ?></td>
-<td><?php echo htmlspecialchars($row['grade'] ?? '-'); ?></td>
-<td><?php echo htmlspecialchars($row['grade_point'] ?? '-'); ?></td>
+<td><?php echo e($row['child_name'] ?? 'Child'); ?></td>
+<td><strong><?php echo e($row['exam_code'] ?? 'Legacy'); ?></strong></td>
+<td><?php echo e($row['exam_name'] ?? 'Result Sheet'); ?></td>
+<td><?php echo result_date($row['exam_date'] ?? null, $row['academic_year'] ?? ''); ?></td>
+<td><?php echo e($row['subject_name'] ?? '-'); ?></td>
+<td><?php echo e($row['marks_obtained'] ?? $row['total_marks'] ?? '0'); ?>/<?php echo e($row['max_marks'] ?? '-'); ?></td>
+<td><?php echo isset($row['percentage']) ? number_format((float) $row['percentage'], 1) . '%' : '-'; ?></td>
+<td><?php echo e($row['grade'] ?? '-'); ?></td>
 </tr>
 <?php } } ?>
 </tbody>

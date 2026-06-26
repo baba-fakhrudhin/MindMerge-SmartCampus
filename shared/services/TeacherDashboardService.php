@@ -1,12 +1,15 @@
 <?php
 
 require_once __DIR__ . '/TeacherScopeService.php';
+require_once __DIR__ . '/ExamService.php';
 require_once __DIR__ . '/../../config/notifications.php';
 
 class TeacherDashboardService
 {
     private mysqli $conn;
     private TeacherScopeService $scope;
+    private array $tableCache = [];
+    private array $columnCache = [];
 
     public function __construct(mysqli $conn, TeacherScopeService $scope)
     {
@@ -31,6 +34,11 @@ class TeacherDashboardService
             'pending_attendance'  => $pending,
             'completed_attendance'=> $completed,
             'assigned_students'   => $this->scope->getAssignedStudentCount(),
+            'assigned_subjects'   => count($this->scope->getSubjects()),
+            'assigned_sections'   => count($pairs),
+            'upcoming_exams'      => (new ExamService($this->conn))->getExamStatistics([
+                'teacher_id' => $this->scope->getTeacherId(),
+            ])['upcoming_exams'],
             'unread_notifications'=> $unread,
         ];
     }
@@ -40,7 +48,7 @@ class TeacherDashboardService
         $tid = $this->scope->getTeacherId();
         $day = strtolower(date('l'));
 
-        if ($tid <= 0) {
+        if ($tid <= 0 || !$this->tablesExist(['timetable_entries', 'timetables', 'teacher_assignments', 'periods', 'subjects', 'classes', 'sections'])) {
             return [];
         }
 
@@ -191,6 +199,81 @@ class TeacherDashboardService
         ];
     }
 
+    public function getAssignmentOverview(): array
+    {
+        $assignments = $this->scope->getAssignments();
+        $items = [];
+
+        foreach ($assignments as $assignment) {
+            $items[] = [
+                'subject_name' => $assignment['subject_name'],
+                'class_name' => $assignment['class_name'],
+                'section_name' => $assignment['section_name'],
+                'assignment_role' => $assignment['assignment_role'],
+            ];
+        }
+
+        return $items;
+    }
+
+    public function getUpcomingExams(int $limit = 5): array
+    {
+        require_once __DIR__ . '/ExamService.php';
+        return (new ExamService($this->conn))->getUpcomingExamsForTeacher($this->scope->getTeacherId(), $limit);
+    }
+
+    public function getStudentPerformance(): array
+    {
+        $pairs = $this->scope->getAssignedClassSectionPairs();
+
+        if (empty($pairs) || !$this->tablesExist(['results', 'result_marks', 'exams'])) {
+            return ['labels' => [], 'values' => []];
+        }
+
+        $conditions = [];
+        foreach ($pairs as $p) {
+            $conditions[] = "(r.class_id = {$p['class_id']} AND r.section_id = {$p['section_id']})";
+        }
+
+        $labels = [];
+        $values = [];
+        $query = mysqli_query(
+            $this->conn,
+            "SELECT c.class_name, s.section_name, e.total_marks,
+                    AVG(rm.marks_obtained) AS average_marks
+             FROM results r
+             INNER JOIN result_marks rm ON rm.result_id = r.result_id
+             INNER JOIN exams e ON e.exam_id = r.exam_id
+             INNER JOIN classes c ON c.class_id = r.class_id
+             INNER JOIN sections s ON s.section_id = r.section_id
+             WHERE (" . implode(' OR ', $conditions) . ") AND r.status = 'published'
+             GROUP BY r.class_id, r.section_id, c.class_name, s.section_name, e.total_marks
+             ORDER BY c.class_name, s.section_name"
+        );
+
+        while ($query && $row = mysqli_fetch_assoc($query)) {
+            $total = (float) ($row['total_marks'] ?: 100);
+            $avg = (float) ($row['average_marks'] ?? 0);
+            $labels[] = $row['class_name'] . ' ' . $row['section_name'];
+            $values[] = $total > 0 ? round(($avg / $total) * 100, 1) : 0;
+        }
+
+        return ['labels' => $labels, 'values' => $values];
+    }
+
+    public function getRecentNotifications(int $limit = 5): array
+    {
+        if (!$this->tableExists('notifications')) {
+            return [];
+        }
+
+        $uid = (int) ($_SESSION['user']['id'] ?? 0);
+        $role = $_SESSION['user']['role'] ?? 'teacher';
+        $context = notification_user_context($this->conn, $uid, $role);
+
+        return notification_recent_for_context($this->conn, $context, $limit);
+    }
+
     private function getTodayScheduleCount(): int
     {
         return count($this->getTodaySchedule());
@@ -232,5 +315,45 @@ class TeacherDashboardService
         $row = mysqli_fetch_row($result);
 
         return (int) ($row[0] ?? 0);
+    }
+
+    private function tableHasColumn(string $table, string $column): bool
+    {
+        $key = $table . '.' . $column;
+        if (isset($this->columnCache[$key])) {
+            return $this->columnCache[$key];
+        }
+        if (!$this->tableExists($table)) {
+            return $this->columnCache[$key] = false;
+        }
+
+        $safeTable = mysqli_real_escape_string($this->conn, $table);
+        $safeColumn = mysqli_real_escape_string($this->conn, $column);
+        $result = mysqli_query($this->conn, "SHOW COLUMNS FROM `$safeTable` LIKE '$safeColumn'");
+
+        return $this->columnCache[$key] = ($result && mysqli_num_rows($result) > 0);
+    }
+
+    private function tableExists(string $table): bool
+    {
+        if (isset($this->tableCache[$table])) {
+            return $this->tableCache[$table];
+        }
+
+        $safe = mysqli_real_escape_string($this->conn, $table);
+        $result = mysqli_query($this->conn, "SHOW TABLES LIKE '$safe'");
+
+        return $this->tableCache[$table] = ($result && mysqli_num_rows($result) > 0);
+    }
+
+    private function tablesExist(array $tables): bool
+    {
+        foreach ($tables as $table) {
+            if (!$this->tableExists($table)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 }

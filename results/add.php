@@ -2,63 +2,21 @@
 
 include('../config/auth.php');
 include('../config/db.php');
+require_once '../shared/services/ExamService.php';
+require_once '../shared/services/ResultsService.php';
 
 $error = '';
+$examService = new ExamService($conn);
+$resultsService = new ResultsService($conn);
 
-$exams = mysqli_query(
-
-$conn,
-
-"SELECT
-
-e.exam_id,
-e.exam_name,
-e.exam_date,
-e.class_id,
-e.section_id,
-
-c.class_name,
-s.section_name,
-
-sub.subject_name,
-
-e.custom_subject
-
-FROM exams e
-
-LEFT JOIN classes c
-ON e.class_id = c.class_id
-
-LEFT JOIN sections s
-ON e.section_id = s.section_id
-
-LEFT JOIN subjects sub
-ON e.subject_id = sub.subject_id
-
-ORDER BY e.exam_date DESC,
-e.exam_name ASC"
-
-);
+$exams = $examService->getExams();
 
 if($_SERVER['REQUEST_METHOD'] == 'POST'){
 
 $exam_id = (int)$_POST['exam_id'];
+$exam = $examService->getExamById($exam_id);
 
-$examQuery = mysqli_query(
-
-$conn,
-
-"SELECT *
-
-FROM exams
-
-WHERE exam_id='$exam_id'
-
-LIMIT 1"
-
-);
-
-if(mysqli_num_rows($examQuery) == 0){
+if(!$exam){
 
 $error =
 'Selected exam not found.';
@@ -66,73 +24,14 @@ $error =
 }
 else{
 
-$exam =
-mysqli_fetch_assoc(
-$examQuery
-);
+$result_id = $resultsService->createResultFromExam($exam_id, (int) ($_SESSION['user']['id'] ?? 0));
 
-$existing = mysqli_query(
+if($result_id <= 0){
 
-$conn,
-
-"SELECT result_id
-
-FROM results
-
-WHERE exam_id='$exam_id'
-
-LIMIT 1"
-
-);
-
-if(mysqli_num_rows($existing) > 0){
-
-$result =
-mysqli_fetch_assoc(
-$existing
-);
-
-header(
-'Location:mark.php?id=' .
-$result['result_id']
-);
-
-exit;
+$error = 'Unable to create result session for the selected exam.';
 
 }
-
-$class_id = !empty($exam['class_id'])
-? $exam['class_id']
-: "NULL";
-
-$section_id = !empty($exam['section_id'])
-? $exam['section_id']
-: "NULL";
-
-mysqli_query(
-
-$conn,
-
-"INSERT INTO results
-(
-exam_id,
-class_id,
-section_id,
-status
-)
-
-VALUES
-(
-".$exam['exam_id'].",
-$class_id,
-$section_id,
-'draft'
-)"
-
-);
-
-$result_id =
-mysqli_insert_id($conn);
+else{
 
 header(
 'Location:mark.php?id=' .
@@ -140,6 +39,8 @@ $result_id
 );
 
 exit;
+
+}
 
 }
 
@@ -254,8 +155,7 @@ Select Exam
 
 <?php
 
-while($exam =
-mysqli_fetch_assoc($exams)){
+foreach($exams as $exam){
 
 ?>
 <option
