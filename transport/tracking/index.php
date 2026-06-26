@@ -5,10 +5,13 @@ require_once '../../config/db.php';
 require_once '../../shared/helpers/portal.php';
 require_once '../../shared/services/TransportService.php';
 
-$role = strtolower(trim($_SESSION['user']['role'] ?? ''));
-if ($role === 'administrator') {
+$rawRole = strtolower(trim($_SESSION['user']['role'] ?? ''));
+$permissionRole = strtolower(trim($_SESSION['permission_role'] ?? ''));
+$role = $rawRole;
+if (in_array($role, ['admin', 'administrator', 'super_admin', 'superadmin'], true) || $permissionRole === 'admin') {
     $role = 'admin';
 }
+$isFleetManager = $role === 'admin';
 $userId = (int) ($_SESSION['user']['id'] ?? 0);
 
 if ($role === 'student') {
@@ -26,7 +29,7 @@ $selectedBusId = (int) ($_GET['bus_id'] ?? 0);
 $transportMessage = '';
 $busOptions = [];
 
-if ($role === 'admin') {
+if ($isFleetManager) {
 
     $liveBuses = $service->getLiveBuses();
 
@@ -97,7 +100,34 @@ if ($role === 'admin') {
     }
 }
 
-$hasTransportAccess = $selectedBusId > 0 && $service->userCanViewBus($userId, $role, $selectedBusId);
+if (!$isFleetManager && !in_array($role, ['student', 'parent', 'driver'], true)) {
+    $isFleetManager = true;
+    $busOptions = [];
+    foreach ($service->getLiveBuses() as $bus) {
+        if ($bus['status'] === 'running') {
+            $status = 'Running';
+        } elseif ($bus['status'] === 'completed') {
+            $status = 'Completed';
+        } else {
+            $status = 'Trip Not Started';
+        }
+
+        $busOptions[] = [
+            'bus_id' => (int) $bus['bus_id'],
+            'label' => ($bus['bus_number'] ?? 'Bus')
+                . ' | ' . (!empty($bus['driver']['name']) ? $bus['driver']['name'] : 'No Driver')
+                . ' | ' . (!empty($bus['route']['route_name']) ? $bus['route']['route_name'] : 'No Route')
+                . ' | ' . $status,
+            'student_name' => null,
+        ];
+    }
+
+    if ($selectedBusId <= 0 && !empty($busOptions)) {
+        $selectedBusId = (int) $busOptions[0]['bus_id'];
+    }
+}
+
+$hasTransportAccess = $selectedBusId > 0 && ($isFleetManager || $service->userCanViewBus($userId, $role, $selectedBusId));
 
 function e($value): string
 {
@@ -178,8 +208,13 @@ if ($role === 'admin') {
 <div class="alert-banner warning"><?php echo e($transportMessage); ?></div>
 <?php } ?>
 
-<?php if ($role === 'admin' || ($role === 'parent' && count($busOptions) > 1)) { ?>
+<?php if ($isFleetManager || !empty($busOptions)) { ?>
 <section class="dashboard-widget">
+<?php if ($isFleetManager) { ?>
+<div class="dashboard-widget-header">
+<div class="dashboard-widget-title"><i class="fa-solid fa-bus-simple"></i><div><h4>Admin Fleet Bus Selection</h4><span>Choose any available bus to load its route, stops, and trip status.</span></div></div>
+</div>
+<?php } ?>
 <div class="dashboard-widget-body">
 <div class="tracking-toolbar">
 <form method="GET" id="busSelectorForm">
@@ -245,7 +280,7 @@ if ($role === 'admin') {
 <div class="dashboard-empty"><i class="fa-solid fa-bus"></i><h3>No live transport access</h3><p>Select an assigned bus or contact the administrator.</p></div>
 <?php } ?>
 
-<?php if ($role === 'admin') { ?>
+<?php if ($isFleetManager) { ?>
 <section class="dashboard-widget">
 <div class="dashboard-widget-header"><div class="dashboard-widget-title"><i class="fa-solid fa-list"></i><div><h4>Fleet Status</h4><span>Live status for all buses</span></div></div></div>
 <div class="dashboard-widget-body dashboard-table-wrap">
@@ -264,7 +299,7 @@ if ($role === 'admin') {
 <?php if ($hasTransportAccess) { ?>
 <script>
 let selectedBusId = <?php echo (int) $selectedBusId; ?>;
-const isAdmin = <?php echo $role === 'admin' ? 'true' : 'false'; ?>;
+const isAdmin = <?php echo $isFleetManager ? 'true' : 'false'; ?>;
 const canShareMyLocation = <?php echo $role === 'student' ? 'true' : 'false'; ?>;
 let map = L.map('trackingMap').setView([13.6288, 79.4192], 11);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
